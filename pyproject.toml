@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "spatialmem-brain"
+version = "0.1.0a0"
+description = "The brain/LLM layer for SpatialMem — Reasoner + Brain cognitive loop + Cosmos Reason verbalizer. Companion to the spatialmem memory core."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "wikieden" }]
+dependencies = ["spatialmem", "numpy"]
+
+[project.optional-dependencies]
+# Full stack (memory + perception). Perception is a private companion repo;
+# install it alongside for Brain.observe(rgb, depth, pose) with a real adapter.
+perception = ["spatialmem-perception"]
+dev = ["pytest", "ruff"]
+
+[project.urls]
+Core = "https://github.com/wikieden/spatialmem"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spatialmem_brain"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
