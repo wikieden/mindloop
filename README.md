@@ -56,6 +56,14 @@ print(brain.ask("where is the mug?"))    # retrieve -> reason -> cited Answer
 
 Tests use `ScriptedReasoner` (deterministic, no network).
 
+## Self-host the reasoner
+
+Point `CosmosReasonVerbalizer(base_url=...)` at a local OpenAI-compatible server
+(vLLM or an NVIDIA NIM container) — e.g. Cosmos-Reason2-8B on an RTX PRO 6000
+(96 GB). Step-by-step (variants, VRAM, serve commands, wiring):
+**[docs/local-serving.md](docs/local-serving.md)**. Runnable skeleton:
+`examples/02_local_reasoner.py`.
+
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE).
