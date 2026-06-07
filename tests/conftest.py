@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from spatialmem import Detection, SpatialMemory
 
 DIM = 16

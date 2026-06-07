@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from spatialmem_brain import Answer, Brain, ScriptedReasoner
 from tests.conftest import make_det
+
+from spatialmem_brain import Answer, Brain, ScriptedReasoner
 
 
 def test_brain_ingest_then_ask(mem) -> None:

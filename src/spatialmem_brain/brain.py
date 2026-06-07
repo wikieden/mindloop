@@ -17,7 +17,6 @@ from .reason import Answer, Reasoner
 
 if TYPE_CHECKING:
     import numpy as np
-
     from spatialmem import Detection, PerceptionAdapter, SpatialMemory
 
 

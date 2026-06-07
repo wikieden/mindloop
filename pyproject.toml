@@ -16,7 +16,7 @@ dependencies = ["spatialmem", "numpy"]
 # Full stack (memory + perception). Perception is a private companion repo;
 # install it alongside for Brain.observe(rgb, depth, pose) with a real adapter.
 perception = ["spatialmem-perception"]
-dev = ["pytest", "ruff"]
+dev = ["pytest", "pytest-cov", "ruff", "pyright"]
 
 [project.urls]
 Core = "https://github.com/wikieden/spatialmem"
@@ -26,6 +26,15 @@ packages = ["src/spatialmem_brain"]
 
 [tool.ruff]
 line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "PERF", "RUF"]
+
+[tool.pyright]
+include = ["src/spatialmem_brain"]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

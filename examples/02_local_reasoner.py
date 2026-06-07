@@ -15,8 +15,8 @@ import pathlib
 import tempfile
 
 import numpy as np
-
 from spatialmem import Detection, QueryError, SpatialMemory
+
 from spatialmem_brain import Brain, CosmosReasonVerbalizer, VerbalizerReasoner
 
 BASE_URL = "http://localhost:8000/v1"
