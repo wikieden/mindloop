@@ -6,7 +6,9 @@
 internals), [../01-POSITIONING.md](../01-POSITIONING.md) (why the memory layer
 is the missing piece). Concrete perception (the `Cosmos3PerceptionAdapter`, the
 camera→world geometry lift, image-crop encoding) lives in the separate companion
-repo **`spatialmem-perception`** — core does not do perception.
+repo **`spatialmem-perception`** — core does not do perception. For which models
+to SFT/RL (and which to leave frozen), see
+[post-training-rl-roadmap.md](post-training-rl-roadmap.md).
 
 > Reviewed by an adversarial critic panel (architecture / API-accuracy /
 > completeness). Corrections folded: API signatures aligned to shipped code,
