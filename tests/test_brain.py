@@ -60,3 +60,19 @@ def test_brain_ask_falls_back_to_whole_scene_when_query_empty(mem) -> None:
     brain.ingest([make_det("mug", (1.0, 0.0, 0.9), 1)])
     brain.ask("zzzz-no-such-object-xyz")
     assert "mug" in seen["ctx"]  # nothing matched -> whole scene served
+
+
+def test_brain_ask_relational_keeps_anchor_and_edge(mem) -> None:
+    seen: dict[str, str] = {}
+
+    class EchoReasoner:
+        def reason(self, question: str, context: str) -> Answer:
+            seen["ctx"] = context
+            return Answer(text="ok")
+
+    brain = Brain(mem, EchoReasoner())
+    brain.ingest([make_det("table", (1.0, 0.0, 0.40), 1), make_det("mug", (1.0, 0.0, 0.50), 2)])
+    mem.relate()
+    brain.ask("what is on the table?")
+    assert "table" in seen["ctx"]  # relation anchor survives the subgraph filter
+    assert "on table#" in seen["ctx"]  # ...with the 'on' edge that answers it

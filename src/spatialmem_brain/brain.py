@@ -58,13 +58,16 @@ class Brain:
         self._mem.add_detections(detections, episode=episode)
         return self._mem.commit()
 
-    def ask(self, question: str, *, k: int = 12) -> Answer:
+    def ask(self, question: str, *, k: int = 64) -> Answer:
         """Retrieve a query-relevant subgraph → reason → answer.
 
-        Retrieves the top-`k` nodes for `question` and serializes only that
-        subgraph (plus its hierarchy ancestors) within the token budget, rather
-        than dumping the whole scene truncated — so the relevant objects survive
-        a tight budget. Falls back to the whole scene when nothing matches.
+        Retrieves the top-`k` nodes for `question` and serializes that subgraph —
+        the hits, their 1-hop relation neighbours, and the hierarchy ancestors of
+        both — within the token budget, rather than dumping the whole scene
+        truncated, so the relevant objects survive a tight budget. Falls back to
+        the whole scene when nothing matches. `k` is deliberately generous so the
+        token budget (not `k`) is the binding limit on a normal scene; an
+        enumerative query over more than `k` same-label objects is capped at `k`.
         """
         hits = self._mem.query(question, k=k)
         node_ids = {n.id for n in hits.nodes}
