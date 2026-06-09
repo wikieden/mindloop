@@ -1,3 +1,5 @@
+> 🌐 **English** · [中文](../zh/post-training-rl-roadmap.md)
+
 # Post-training & RL roadmap — which models to train, and how
 
 **Status:** design / forward-looking. Companion to

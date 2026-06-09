@@ -1,9 +1,11 @@
+> 🌐 **English** · [中文](../zh/cosmos3-spatialmem-llm-brain.md)
+
 # Design — Cosmos 3 + SpatialMem + LLM as an embodied "brain"
 
 **Status:** design / forward-looking (v2, post adversarial review).
 **Audience:** integrators wiring SpatialMem into an embodied or video-understanding agent.
-**Companion docs:** [../02-ARCHITECTURE.md](../02-ARCHITECTURE.md) (SpatialMem
-internals), [../01-POSITIONING.md](../01-POSITIONING.md) (why the memory layer
+**Companion docs:** [../02-ARCHITECTURE.md](../../../SpatialMem/docs/en/02-ARCHITECTURE.md) (SpatialMem
+internals), [../01-POSITIONING.md](../../../SpatialMem/docs/en/01-POSITIONING.md) (why the memory layer
 is the missing piece). Concrete perception (the `Cosmos3PerceptionAdapter`, the
 camera→world geometry lift, image-crop encoding) lives in the separate companion
 repo **`spatialmem-perception`** — core does not do perception. For which models

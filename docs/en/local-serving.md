@@ -1,3 +1,5 @@
+> 🌐 **English** · [中文](../zh/local-serving.md)
+
 # Local reasoner deployment (self-hosted Cosmos Reason)
 
 Run the reasoner on your own GPU instead of the hosted NVIDIA gateway. The

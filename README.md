@@ -1,3 +1,5 @@
+> 🌐 **English** · [中文](README.zh.md)
+
 # spatialmem-brain
 
 The **brain / LLM layer** for **[SpatialMem](https://github.com/wikieden/spatialmem)** —
@@ -30,7 +32,7 @@ RGB(-D) ─► [spatialmem-perception adapter] ─► Detections
                        Brain.ask ─► Reasoner (LLM) ─► Answer(text, cited ids)
 ```
 
-Full system design: [docs/cosmos3-spatialmem-llm-brain.md](docs/cosmos3-spatialmem-llm-brain.md).
+Full system design: [docs/cosmos3-spatialmem-llm-brain.md](docs/en/cosmos3-spatialmem-llm-brain.md).
 
 ## Install
 
@@ -61,7 +63,7 @@ Tests use `ScriptedReasoner` (deterministic, no network).
 Point `CosmosReasonVerbalizer(base_url=...)` at a local OpenAI-compatible server
 (vLLM or an NVIDIA NIM container) — e.g. Cosmos-Reason2-8B on an RTX PRO 6000
 (96 GB). Step-by-step (variants, VRAM, serve commands, wiring):
-**[docs/local-serving.md](docs/local-serving.md)**. Runnable skeleton:
+**[docs/local-serving.md](docs/en/local-serving.md)**. Runnable skeleton:
 `examples/02_local_reasoner.py`.
 
 ## License
