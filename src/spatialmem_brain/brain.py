@@ -58,7 +58,20 @@ class Brain:
         self._mem.add_detections(detections, episode=episode)
         return self._mem.commit()
 
-    def ask(self, question: str) -> Answer:
-        """Retrieve memory → reason → answer."""
-        context = self._mem.serialize(format="prompt", max_tokens=self._budget)
+    def ask(self, question: str, *, k: int = 12) -> Answer:
+        """Retrieve a query-relevant subgraph → reason → answer.
+
+        Retrieves the top-`k` nodes for `question` and serializes only that
+        subgraph (plus its hierarchy ancestors) within the token budget, rather
+        than dumping the whole scene truncated — so the relevant objects survive
+        a tight budget. Falls back to the whole scene when nothing matches.
+        """
+        hits = self._mem.query(question, k=k)
+        node_ids = {n.id for n in hits.nodes}
+        if node_ids:
+            context = self._mem.serialize(
+                format="prompt", node_ids=node_ids, max_tokens=self._budget
+            )
+        else:
+            context = self._mem.serialize(format="prompt", max_tokens=self._budget)
         return self._reasoner.reason(question, context)
