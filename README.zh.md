@@ -33,6 +33,8 @@ RGB(-D) ─► [spatialmem-perception adapter] ─► Detections
 ```
 
 完整系统设计：[docs/cosmos3-spatialmem-llm-brain.md](docs/zh/cosmos3-spatialmem-llm-brain.md)。
+生产版三层大脑（慢思考 / 习惯 / 反射）—— 提案与决策记录：
+[docs/brain-architecture.md](docs/zh/brain-architecture.md)。
 
 ## 安装
 

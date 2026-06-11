@@ -33,6 +33,8 @@ RGB(-D) ─► [spatialmem-perception adapter] ─► Detections
 ```
 
 Full system design: [docs/cosmos3-spatialmem-llm-brain.md](docs/en/cosmos3-spatialmem-llm-brain.md).
+Production three-layer brain (Deliberation / Habit / Reflex) — proposal &
+decision record: [docs/brain-architecture.md](docs/en/brain-architecture.md).
 
 ## Install
 
