@@ -2,7 +2,7 @@
 
 A `Reasoner` consumes the serialized scene graph (and may, later, call memory
 tools) and produces an `Answer` that cites the `node_id`s it used.
-`VerbalizerReasoner` wraps a `spatialmem.Verbalizer` (BYO LLM, e.g.
+`VerbalizerReasoner` wraps a `tempomem.Verbalizer` (BYO LLM, e.g.
 `CosmosReasonVerbalizer`); `ScriptedReasoner` is a deterministic test double.
 """
 
@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from spatialmem import Verbalizer
+    from tempomem import Verbalizer
 
 _ID_RE = re.compile(r"#(\d+)")
 

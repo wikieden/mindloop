@@ -28,8 +28,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      # `spatialmem` is not on PyPI yet; install the core from its public repo.
-      # `spatialmem-perception` ([perception] extra) is private and not needed by
+      # `tempomem` is not on PyPI yet; install the core from its public repo.
+      # `worldsense` ([perception] extra) is private and not needed by
       # the shipped tests, so it is omitted here.
-      - run: pip install numpy pytest "spatialmem @ git+https://github.com/wikieden/spatialmem.git@feat/cosmos-integration"
+      - run: pip install numpy pytest "tempomem @ git+https://github.com/wikieden/tempomem.git@feat/cosmos-integration"
       - run: PYTHONPATH=src pytest tests -q

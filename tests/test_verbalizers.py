@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import pytest
-from spatialmem import HashEncoder, QueryError, SpatialMemory
+from tempomem import HashEncoder, QueryError, SpatialMemory
 from tests.conftest import DIM, make_det
 
-from spatialmem_brain import CosmosReasonVerbalizer
-from spatialmem_brain.verbalizers import strip_reasoning
+from mindloop import CosmosReasonVerbalizer
+from mindloop.verbalizers import strip_reasoning
 
 _COSMOS_REPLY = "<think>reasoning here</think><answer>on the table</answer>"
 

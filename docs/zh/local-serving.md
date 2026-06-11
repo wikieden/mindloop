@@ -55,8 +55,8 @@ docker run --rm --runtime=nvidia --gpus all --shm-size=32GB \
 ## 接入（一行代码 — `base_url`）
 
 ```python
-from spatialmem import SpatialMemory
-from spatialmem_brain import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
+from tempomem import SpatialMemory
+from mindloop import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
 
 vb = CosmosReasonVerbalizer(
     base_url="http://localhost:8000/v1",   # 本地服务器地址

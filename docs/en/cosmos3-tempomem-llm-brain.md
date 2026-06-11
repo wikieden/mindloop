@@ -1,14 +1,14 @@
-> 🌐 **English** · [中文](../zh/cosmos3-spatialmem-llm-brain.md)
+> 🌐 **English** · [中文](../zh/cosmos3-tempomem-llm-brain.md)
 
-# Design — Cosmos 3 + SpatialMem + LLM as an embodied "brain"
+# Design — Cosmos 3 + Chronotope + LLM as an embodied "brain"
 
 **Status:** design / forward-looking (v2, post adversarial review).
-**Audience:** integrators wiring SpatialMem into an embodied or video-understanding agent.
-**Companion docs:** [../02-ARCHITECTURE.md](../../../SpatialMem/docs/en/02-ARCHITECTURE.md) (SpatialMem
-internals), [../01-POSITIONING.md](../../../SpatialMem/docs/en/01-POSITIONING.md) (why the memory layer
+**Audience:** integrators wiring Chronotope into an embodied or video-understanding agent.
+**Companion docs:** [../02-ARCHITECTURE.md](../../../tempomem/docs/en/02-ARCHITECTURE.md) (Chronotope
+internals), [../01-POSITIONING.md](../../../tempomem/docs/en/01-POSITIONING.md) (why the memory layer
 is the missing piece). Concrete perception (the `Cosmos3PerceptionAdapter`, the
 camera→world geometry lift, image-crop encoding) lives in the separate companion
-repo **`spatialmem-perception`** — core does not do perception. For which models
+repo **`worldsense`** — core does not do perception. For which models
 to SFT/RL (and which to leave frozen), see
 [post-training-rl-roadmap.md](post-training-rl-roadmap.md).
 
@@ -28,7 +28,7 @@ An embodied agent needs three faculties that no single model provides:
 3. **Reason / plan / talk** in general language about goals and the remembered
    world.
 
-NVIDIA **Cosmos 3** gives (1). **SpatialMem** gives (2). A general **LLM** gives
+NVIDIA **Cosmos 3** gives (1). **Chronotope** gives (2). A general **LLM** gives
 (3). Cosmos 3's own technical report names the (2) gap explicitly — *"temporally
 persistent state, spatial grounding tied to objects and agents … a maintained,
 actionable scene estimate"* — and ships none of it: the generator runs on a
@@ -40,7 +40,7 @@ This design wires the three into one cognitive loop.
 | Faculty | Component | Brain region |
 |---|---|---|
 | Vision + physical intuition | Cosmos 3 Reasoner | visual cortex + cerebellum |
-| Persistent spatial/episodic memory | SpatialMem | hippocampus |
+| Persistent spatial/episodic memory | Chronotope | hippocampus |
 | Language, planning, abstraction | LLM | prefrontal cortex |
 
 The "brain" is not any one box — it is the **loop** that binds them.
@@ -57,7 +57,7 @@ The "brain" is not any one box — it is the **loop** that binds them.
 | Node identity | integer `node_id`, stable within a read snapshot (§6) |
 
 Cosmos sees **RGB only** at inference. Depth + pose are consumed by the
-*adapter* and SpatialMem (the camera→world lift), **not** by the Cosmos
+*adapter* and Chronotope (the camera→world lift), **not** by the Cosmos
 Reasoner.
 
 ## 3. Architecture
@@ -76,7 +76,7 @@ Reasoner.
                           └─────────────┬──────────────┘                 │
                                         ▼                                 │
                                  ┌────────────┐                          │
-                                 │ SpatialMem │  fuse·persist·hierarchy  │
+                                 │ Chronotope │  fuse·persist·hierarchy  │
                                  │ (memory)   │  ·relations·temporal     │
                                  └─────┬──────┘                          │
                        serialize(prompt)│ + query/semantic/spatial tools │
@@ -95,10 +95,10 @@ contract (§6).
 
 ## 4. Interface contracts
 
-### C1 · Cosmos 3 → SpatialMem (perception → memory) — *seam in core; adapter in `spatialmem-perception`*
+### C1 · Cosmos 3 → Chronotope (perception → memory) — *seam in core; adapter in `worldsense`*
 
 Core ships only the `PerceptionAdapter` protocol (`add_frame`). The concrete
-`Cosmos3PerceptionAdapter` lives in the companion repo **`spatialmem-perception`**:
+`Cosmos3PerceptionAdapter` lives in the companion repo **`worldsense`**:
 Cosmos sees **RGB** and emits structured **camera-frame** 3D boxes (JSON:
 `label, center, size, orientation`) and can *estimate* metric ego-pose; the
 adapter lifts each box to a world-frame `Detection` (using the caller-supplied
@@ -112,7 +112,7 @@ mem.add_frame(rgb, depth, pose, adapter=cosmos3_adapter)  # adapter.process_fram
 mem.commit()                                              # arbiter dedups across frames
 ```
 
-### C2 · SpatialMem → LLM (memory → cortex) — *shipped*
+### C2 · Chronotope → LLM (memory → cortex) — *shipped*
 
 The serialized scene graph is the context bus: compact, hierarchical,
 relation-aware, token-budgeted.
@@ -126,7 +126,7 @@ tokenizer); it drops whole top-level subtrees most-recent-first with a
 `(N more omitted)` marker (a region never appears without its contents). Leave
 headroom against the model's real tokenizer.
 
-### C3 · LLM ↔ SpatialMem (cortex queries memory as tools) — *shipped: `spatialmem.SpatialMemTools`*
+### C3 · LLM ↔ Chronotope (cortex queries memory as tools) — *shipped: `tempomem.ChronotopeTools`*
 
 C2 and C3 are two access patterns of **one** memory-access seam: hand the whole
 serialized graph (C2) for small scenes, or let the LLM pull on demand (C3) for
@@ -193,7 +193,7 @@ a fresh Cosmos look. C4 is a **bounded** request, not an open loop:
 
 ### Topology A — Cosmos Reasoner *is* the LLM (single-VLM brain)
 
-Cosmos does perception AND final reasoning/answer; SpatialMem is the memory
+Cosmos does perception AND final reasoning/answer; Chronotope is the memory
 between clips. All-NVIDIA, simplest wiring, GPU-heavy. Uses the shipped
 `CosmosReasonVerbalizer` as the `answer()` backend — which **today defaults to
 Cosmos Reason 2 (`nvidia/cosmos-reason2-8b`)** and is `model=`-configurable to
@@ -203,7 +203,7 @@ the Cosmos 3 Reasoner NIM once GA.
 
 Cosmos only perceives (C1). A BYO LLM (Claude/GPT/Llama/Ollama) reasons over the
 serialized graph (C2) and calls memory tools (C3). More flexible, cheaper
-reasoning, no lock-in; matches SpatialMem's BYO-`Verbalizer` design.
+reasoning, no lock-in; matches Chronotope's BYO-`Verbalizer` design.
 
 | | A (Cosmos = brain) | B (separate LLM) |
 |---|---|---|
@@ -266,7 +266,7 @@ motion) — note this when surfacing "what moved".
 | Drop | What breaks |
 |---|---|
 | − Cosmos 3 | no perception / no 3D grounding from raw video |
-| − SpatialMem | no persistence; forgets across clips/sessions (Cosmos's own gap); LLM re-reads raw frames every time, blows context |
+| − Chronotope | no persistence; forgets across clips/sessions (Cosmos's own gap); LLM re-reads raw frames every time, blows context |
 | − LLM | no general planning / language / abstraction over the remembered world |
 
 ## 9. Store compatibility across sessions
@@ -308,7 +308,7 @@ perception or reasoning is unavailable** — must be explicit and tested:
 
 ## 12. Non-goals
 
-Inherits SpatialMem's: **not** a SLAM (pose is upstream), **not** the action /
+Inherits Chronotope's: **not** a SLAM (pose is upstream), **not** the action /
 motion-planning layer (lives in the consumer/LLM), **not** a new VLM.
 **v0 is single-camera, single-agent.** Multi-camera/agent needs primitives this
 design does not yet have: per-observation camera/agent provenance, a single-
@@ -333,16 +333,16 @@ A wrong answer spans three black boxes, so thread one **tick/trace id** through
 PERCEIVE→REMEMBER→REASON→ACT. Log each C3 tool call (name, args, returned
 `node_id`s, latency). Record provenance: LLM answer → cited `node_id`s → source
 observation/detection → Cosmos clip. Hook into existing `mem.stats()` /
-`mem.dump()` / `spatialmem.events` logs.
+`mem.dump()` / `tempomem.events` logs.
 
 ## 15. Build phases
 
 | Phase | Deliverable | Status |
 |---|---|---|
 | P0 | `CosmosReasonVerbalizer` (answer backend, Cosmos Reason 2 today) | ✅ shipped (core) |
-| P1 | `Cosmos3PerceptionAdapter` (C1) + geometry lift + `ImageEncoder` — needs GPU + schema probe | ⬜ in `spatialmem-perception` |
-| P2 | memory-as-tools (C3) — `SpatialMemTools` (schemas + dispatch, validated args) | ✅ shipped |
-| P2+ | thin MCP server wrapping `SpatialMemTools` | ⬜ |
+| P1 | `Cosmos3PerceptionAdapter` (C1) + geometry lift + `ImageEncoder` — needs GPU + schema probe | ⬜ in `worldsense` |
+| P2 | memory-as-tools (C3) — `ChronotopeTools` (schemas + dispatch, validated args) | ✅ shipped |
+| P2+ | thin MCP server wrapping `ChronotopeTools` | ⬜ |
 | P3 | active-perception loop (C4) — bounded | ⬜ |
 | P4 | end-to-end agent demo: stream scene → multi-turn planning with memory | ⬜ |
 
@@ -351,7 +351,7 @@ observation/detection → Cosmos clip. Hook into existing `mem.stats()` /
 - Reuse `bench.recall_at_k` for retrieval quality.
 - **"Memory advantage" eval:** questions answerable *only* with cross-clip /
   cross-session persistence (object seen in clip 1, asked in clip 9) — Cosmos
-  alone (bounded context) fails; Cosmos+SpatialMem passes. This number proves
+  alone (bounded context) fails; Cosmos+Chronotope passes. This number proves
   the architecture, not just the components.
 - **Latency budget** per tick, reported separately: perception (sampled),
   reasoning (on demand), **and maintenance** (`consolidate()` is O(n²) and
@@ -376,7 +376,7 @@ Assume 1 keyframe clip / 5 s and a 1500-token serialize budget:
 
 ```python
 import numpy as np
-from spatialmem import SpatialMemory
+from tempomem import SpatialMemory
 
 def stub_llm(context: str, question: str) -> str:        # swap for Claude/GPT/Ollama
     return f"(reasoning over)\n{context}\nQ: {question}"
@@ -397,7 +397,7 @@ print(stub_llm(ctx, "where is the mug?"))
 
 ## 19. One-paragraph pitch
 
-> Cosmos 3 sees and physically reasons about a video clip; SpatialMem remembers
+> Cosmos 3 sees and physically reasons about a video clip; Chronotope remembers
 > what it saw as a persistent, queryable 3D scene graph; an LLM plans and talks
-> over that memory. Cosmos perceives, SpatialMem remembers, the LLM thinks — a
+> over that memory. Cosmos perceives, Chronotope remembers, the LLM thinks — a
 > brain whose hippocampus NVIDIA's own flagship report says is still missing.

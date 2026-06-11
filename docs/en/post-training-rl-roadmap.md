@@ -3,7 +3,7 @@
 # Post-training & RL roadmap — which models to train, and how
 
 **Status:** design / forward-looking. Companion to
-[cosmos3-spatialmem-llm-brain.md](cosmos3-spatialmem-llm-brain.md) (the embodied
+[cosmos3-tempomem-llm-brain.md](cosmos3-tempomem-llm-brain.md) (the embodied
 brain architecture).
 **Audience:** anyone deciding where to spend training budget across the
 three-faculty brain (perception VLM · spatial memory · reasoning LLM).
@@ -22,11 +22,11 @@ frozen, and the data flywheel that pays for it.
 
 | Component | Where it lives | Post-train? | Method | Priority |
 |---|---|---|---|---|
-| **Reasoning cortex** (`Reasoner` / `Brain.ask`) | `spatialmem-brain` | ✅ highest value | SFT cold-start → **RL (RLVR)** | **P1** |
-| **Cosmos perception VLM** | `spatialmem-perception` | ✅ but SFT only | supervised / distillation (format + grounding) | P2 |
-| **C4 active-perception policy** ("look closer at node N") | `spatialmem-brain` | ⚠️ optional | rule-based v0 → **policy RL** later | P3 |
-| **CLIP/SigLIP crop encoder** | `spatialmem-perception` | ❌ avoid | frozen — see §6 | — |
-| **SpatialMem fusion/arbiter** | `spatialmem` (core) | ❌ no model | threshold *tuning* (search), not training | — |
+| **Reasoning cortex** (`Reasoner` / `Brain.ask`) | `mindloop` | ✅ highest value | SFT cold-start → **RL (RLVR)** | **P1** |
+| **Cosmos perception VLM** | `worldsense` | ✅ but SFT only | supervised / distillation (format + grounding) | P2 |
+| **C4 active-perception policy** ("look closer at node N") | `mindloop` | ⚠️ optional | rule-based v0 → **policy RL** later | P3 |
+| **CLIP/SigLIP crop encoder** | `worldsense` | ❌ avoid | frozen — see §6 | — |
+| **Chronotope fusion/arbiter** | `tempomem` (core) | ❌ no model | threshold *tuning* (search), not training | — |
 
 ---
 
@@ -93,14 +93,14 @@ cross-clip/cross-session persistence* (object seen in clip 1, asked in clip 9) �
 - let the cortex act through the tools,
 - score with the reward function above.
 
-SpatialMem is the world-state/memory backend of the RL loop; the eval harness is
+Chronotope is the world-state/memory backend of the RL loop; the eval harness is
 the reward source. No new simulator needed to start.
 
 ---
 
 ## 2. Cosmos perception VLM — SFT only, do not RL (P2)
 
-Perception (the `Cosmos3PerceptionAdapter` in `spatialmem-perception`) turns RGB
+Perception (the `Cosmos3PerceptionAdapter` in `worldsense`) turns RGB
 into structured 3D boxes. Two reasons to keep it on **supervised** learning:
 
 - **Dense ground truth exists.** 3D boxes / labels are directly labellable (or
@@ -140,8 +140,8 @@ re-look trajectories to train on. RL here is an optimisation, not a prerequisite
 
 ## 4. CLIP/SigLIP crop encoder — freeze it (do not train)
 
-The crop encoder produces the feature vectors SpatialMem stores. **Do not
-fine-tune it in place.** SpatialMem locks `embedding_dim` at store-create time
+The crop encoder produces the feature vectors Chronotope stores. **Do not
+fine-tune it in place.** Chronotope locks `embedding_dim` at store-create time
 and assumes one encoder forever (brain design §9 / store compatibility):
 re-training the encoder changes the embedding space, which invalidates every
 vector already persisted. The only correct way to "change the encoder" is to
@@ -150,7 +150,7 @@ encoder as a fixed, load-bearing dependency.
 
 ---
 
-## 5. SpatialMem fusion/arbiter — tuning, not training
+## 5. Chronotope fusion/arbiter — tuning, not training
 
 The memory layer (fusion, the merge arbiter, decay, split) is **pure algorithm,
 no neural model.** Its `FusionConfig` thresholds (`tau_merge`, `tau_ambig`,
@@ -187,7 +187,7 @@ deploy / eval  ──►  log trajectories (question, scene, tool calls, answer,
 | T0 | Stand up the eval-as-environment (replay clips → store → question → reward) | RL/SFT harness |
 | T1 | Collect + filter cortex trajectories; **SFT cold-start** the `Reasoner` | tool-using base policy |
 | T2 | **RL (GRPO/RLVR)** on the cortex reward | grounded, fewer-step cortex |
-| T3 | Perception **format/grounding SFT** in `spatialmem-perception` | stable 3D-box JSON |
+| T3 | Perception **format/grounding SFT** in `worldsense` | stable 3D-box JSON |
 | T4 | Log C4 re-look trajectories; train the **active-perception policy** | learned look controller |
 
 Budget rule of thumb: **most of the RL spend on T1–T2 (cortex).** T3 is

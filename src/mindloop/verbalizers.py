@@ -1,4 +1,4 @@
-"""NVIDIA Cosmos integration — Cosmos Reason as a SpatialMem `Verbalizer`.
+"""NVIDIA Cosmos integration — Cosmos Reason as a Chronotope `Verbalizer`.
 
 Cosmos Reason is NVIDIA's Physical-AI reasoning vision-language model family:
 Cosmos-Reason1 (7B), Cosmos Reason 2 (2B/8B/32B), and the "Cosmos 3 Reasoner"
@@ -13,8 +13,8 @@ build.nvidia.com gateway, or a self-hosted NIM microservice). Uses only the
 standard library (`urllib`). The model id is configurable, so the same wrapper
 targets Cosmos Reason 1/2 or the Cosmos 3 Reasoner NIM.
 
-    from spatialmem import SpatialMemory
-    from spatialmem_brain import CosmosReasonVerbalizer
+    from tempomem import SpatialMemory
+    from mindloop import CosmosReasonVerbalizer
 
     vb = CosmosReasonVerbalizer(model="nvidia/cosmos-reason2-8b")  # NVIDIA_API_KEY env
     mem = SpatialMemory.open("room.smem", embedding_dim=512, verbalizer=vb)
@@ -31,7 +31,7 @@ import urllib.request
 from collections.abc import Callable
 from typing import Any
 
-from spatialmem import QueryError
+from tempomem import QueryError
 
 # NVIDIA-hosted, OpenAI-compatible NIM gateway (build.nvidia.com).
 DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"

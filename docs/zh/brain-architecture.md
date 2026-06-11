@@ -7,7 +7,7 @@
 为推荐项，**待拍板** —— 拍板前不实现任何内容。§11 本体契约规则（B1–B10）
 **已拍板**（owner，2026-06-11）。
 **读者：** 参与生产版大脑的贡献者；移植新机器人本体的集成者。
-**配套文档：** [cosmos3-spatialmem-llm-brain.md](cosmos3-spatialmem-llm-brain.md)
+**配套文档：** [cosmos3-tempomem-llm-brain.md](cosmos3-tempomem-llm-brain.md)
 （本栈所包裹的记忆↔推理内环）、[local-serving.md](local-serving.md)
 （自托管推理器）、[post-training-rl-roadmap.md](post-training-rl-roadmap.md)
 （哪些模型做 SFT/RL）。
@@ -53,7 +53,7 @@ node id。从相机像素到执行器指令的审计链不断。
 ### 2.2 习惯（S1）—— 在执行缝之外
 
 技能卡实例化产出**技能动词**行为树计划（§4）。参考 BT 运行时、mock 本体、
-仿真器放独立 workspace 成员（`spatialmem-exec`，提案，§3）；真机
+仿真器放独立 workspace 成员（`tempomem-exec`，提案，§3）；真机
 （如 Unitree G1）是独立包，实现同一个 `ExecutorAdapter`。
 
 ### 2.3 反射 —— 刻意出界
@@ -64,10 +64,10 @@ node id。从相机像素到执行器指令的审计链不断。
 ## 3. 包边界（D1、D5）
 
 ```
-spatialmem            core：场景图记忆（L3）+ 痕迹（L4，提案）    numpy-only
-spatialmem-perception 眼睛：RGB-D → 世界系 Detections             [clip] extra
-spatialmem-brain      本包：S2 + Episteme 技能卡 + 协议缝          stdlib core
-spatialmem-exec       提案：ExecutorAdapter 参考实现（BT + MockBody，Genesis 进 [sim]）
+tempomem            core：场景图记忆（L3）+ 痕迹（L4，提案）    numpy-only
+worldsense 眼睛：RGB-D → 世界系 Detections             [clip] extra
+mindloop      本包：S2 + Episteme 技能卡 + 协议缝          stdlib core
+tempomem-exec       提案：ExecutorAdapter 参考实现（BT + MockBody，Genesis 进 [sim]）
 ```
 
 brain 核心维持 stdlib-only，与今天一致。它发布**协议**，别人发布实现 ——
@@ -75,7 +75,7 @@ brain 核心维持 stdlib-only，与今天一致。它发布**协议**，别人�
 
 | 缝 | 协议（住本包） | 谁来填 |
 |---|---|---|
-| 执行 | `ExecutorAdapter` —— 下发计划、流式状态、暴露能力清单 | `spatialmem-exec`、设备包 |
+| 执行 | `ExecutorAdapter` —— 下发计划、流式状态、暴露能力清单 | `tempomem-exec`、设备包 |
 | 推理 | `Reasoner` / `Verbalizer`（已有） | 任意 OpenAI 兼容端点 |
 | 偏好 | `PreferenceStore`（L5，提案） | 外部实现（Mem0 等） |
 
@@ -145,7 +145,7 @@ S2 实例化：绑节点、解规则、叠加 L5 偏好、查能力清单 → �
 
 | 层 | 内容 | 位置 |
 |---|---|---|
-| L3 场景图 | 物体、区域、关系、向量 | `spatialmem` core（已交付） |
+| L3 场景图 | 物体、区域、关系、向量 | `tempomem` core（已交付） |
 | L4 痕迹（episodic） | 计划、结果、策略决定 | **进 core**（提案）—— 痕迹引用场景 node id；共享 id 空间的东西不该跨库 |
 | L5 偏好 | 按人的口味、习惯、覆盖项 | **不进** —— `PreferenceStore` 协议；生命周期、隐私、按人隔离都不同 |
 
@@ -196,7 +196,7 @@ Jetson AGX Orin）交付了 L2/L1 设计并对 L3 提出要求。其 L3↔L2 契
 L1 硬件安全（双通道急停、安全 PLC、STO/SS1/SLS）正是反射层（D4）；其
 错误上抬机制（L2 自愈 IK/导航，`ERR_GRASP_FAILED`/`ERR_OBJECT_LOST` 升
 L3）就是重规划回路；其"世界模型"槽位（语义地图 + 物体状态跟踪，查询预算
-100–500 ms）就是 SpatialMem。其 ROS 2 接口收编为 **ExecutorAdapter
+100–500 ms）就是 Chronotope。其 ROS 2 接口收编为 **ExecutorAdapter
 wire binding v0**。
 
 Owner 裁定（2026-06-11）：
@@ -204,7 +204,7 @@ Owner 裁定（2026-06-11）：
 | # | 规则 |
 |---|---|
 | B1 | **VLA 快速路径不归大脑管。** 本体侧"VLA 模块"（规则引擎 + 模板匹配，<10 ms —— 不是 VLA policy 模型）在大脑*上游*分发：VLA 命中 → 直达 L2；未命中 → 大脑 S2。大脑不拥有、不维护 VLA 模板库；Episteme 仍是大脑自己的知识层。<100 ms 快速路径要求因此不约束大脑。 |
-| B2 | 延迟契约照单接受：简单任务 0.5–2 s，复杂 2–10 s，世界模型查询 100–500 ms（SpatialMem 远低于预算）。 |
+| B2 | 延迟契约照单接受：简单任务 0.5–2 s，复杂 2–10 s，世界模型查询 100–500 ms（Chronotope 远低于预算）。 |
 | B3 | `error_code` + `recovery_actions` 标准化进 ExecutorAdapter 契约：类型化 `ERR_*` 枚举 + 类型化调整词汇（`position_offset`、`orientation_relax`、`force_adjustment` ……）—— 绝不用自由文本。 |
 | B4 | 充电/电池任务 = 一张内置 Episteme 卡；零新机制。 |
 | B5 | 大脑提供 health-check 接口，对应其 L3 初始化清单（`llm_model` / `world_model` / `task_library`）。 |

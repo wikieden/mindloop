@@ -58,8 +58,8 @@ newer than `1.6.0` before deploying.
 ## Wire it (one line — `base_url`)
 
 ```python
-from spatialmem import SpatialMemory
-from spatialmem_brain import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
+from tempomem import SpatialMemory
+from mindloop import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
 
 vb = CosmosReasonVerbalizer(
     base_url="http://localhost:8000/v1",   # your local server

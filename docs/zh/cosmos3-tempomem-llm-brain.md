@@ -1,14 +1,14 @@
-> 🌐 [English](../en/cosmos3-spatialmem-llm-brain.md) · **中文**
+> 🌐 [English](../en/cosmos3-tempomem-llm-brain.md) · **中文**
 
-# 设计 — Cosmos 3 + SpatialMem + LLM 作为具身"大脑"
+# 设计 — Cosmos 3 + Chronotope + LLM 作为具身"大脑"
 
 **状态：** 设计 / 前瞻性（v2，对抗性审查后版本）。
-**读者：** 将 SpatialMem 接入具身智能体或视频理解智能体的集成工程师。
-**配套文档：** [../02-ARCHITECTURE.md](../../../SpatialMem/docs/zh/02-ARCHITECTURE.md)（SpatialMem
-内部架构），[../01-POSITIONING.md](../../../SpatialMem/docs/zh/01-POSITIONING.md)（为什么记忆层
+**读者：** 将 Chronotope 接入具身智能体或视频理解智能体的集成工程师。
+**配套文档：** [../02-ARCHITECTURE.md](../../../tempomem/docs/zh/02-ARCHITECTURE.md)（Chronotope
+内部架构），[../01-POSITIONING.md](../../../tempomem/docs/zh/01-POSITIONING.md)（为什么记忆层
 是缺失的一环）。具体感知实现（`Cosmos3PerceptionAdapter`、
 相机→世界坐标系几何提升、图像裁剪编码）位于独立的伴随仓库
-**`spatialmem-perception`** 中——核心库不负责感知。关于哪些模型需要 SFT/RL
+**`worldsense`** 中——核心库不负责感知。关于哪些模型需要 SFT/RL
 微调（以及哪些保持冻结），请参阅
 [post-training-rl-roadmap.md](post-training-rl-roadmap.md)。
 
@@ -28,7 +28,7 @@
 3. **推理 / 规划 / 语言交互** — 用通用语言就目标和已记忆的
    世界进行推理。
 
-NVIDIA **Cosmos 3** 提供能力（1）。**SpatialMem** 提供能力（2）。通用 **LLM** 提供
+NVIDIA **Cosmos 3** 提供能力（1）。**Chronotope** 提供能力（2）。通用 **LLM** 提供
 能力（3）。Cosmos 3 的官方技术报告明确点出了能力（2）的缺口——*"时间持久状态、
 与对象和智能体绑定的空间锚定……一个可维护的、可操作的场景估计"*——
 而其本身并未提供：生成器运行在约 74K token 的有界上下文窗口内，
@@ -40,7 +40,7 @@ NVIDIA **Cosmos 3** 提供能力（1）。**SpatialMem** 提供能力（2）。�
 | 能力 | 组件 | 大脑区域 |
 |---|---|---|
 | 视觉 + 物理直觉 | Cosmos 3 Reasoner | 视觉皮层 + 小脑 |
-| 持久空间/情景记忆 | SpatialMem | 海马体 |
+| 持久空间/情景记忆 | Chronotope | 海马体 |
 | 语言、规划、抽象 | LLM | 前额叶皮层 |
 
 "大脑"不是任何单一模块——它是将三者绑定在一起的**闭环**。
@@ -57,7 +57,7 @@ NVIDIA **Cosmos 3** 提供能力（1）。**SpatialMem** 提供能力（2）。�
 | 节点标识 | 整型 `node_id`，在读取快照内稳定（§6） |
 
 Cosmos 在推理时**仅看 RGB**。深度 + 位姿由
-*adapter* 和 SpatialMem（相机→世界坐标提升）使用，**不**由 Cosmos
+*adapter* 和 Chronotope（相机→世界坐标提升）使用，**不**由 Cosmos
 Reasoner 使用。
 
 ## 3. 架构
@@ -76,7 +76,7 @@ Reasoner 使用。
                           └─────────────┬──────────────┘                 │
                                         ▼                                 │
                                  ┌────────────┐                          │
-                                 │ SpatialMem │  fuse·persist·hierarchy  │
+                                 │ Chronotope │  fuse·persist·hierarchy  │
                                  │ (memory)   │  ·relations·temporal     │
                                  └─────┬──────┘                          │
                        serialize(prompt)│ + query/semantic/spatial tools │
@@ -94,10 +94,10 @@ Reasoner 使用。
 
 ## 4. 接口契约
 
-### C1 · Cosmos 3 → SpatialMem（感知 → 记忆）— *接缝在核心库；adapter 在 `spatialmem-perception`*
+### C1 · Cosmos 3 → Chronotope（感知 → 记忆）— *接缝在核心库；adapter 在 `worldsense`*
 
 核心库仅提供 `PerceptionAdapter` 协议（`add_frame`）。具体的
-`Cosmos3PerceptionAdapter` 位于伴随仓库 **`spatialmem-perception`** 中：
+`Cosmos3PerceptionAdapter` 位于伴随仓库 **`worldsense`** 中：
 Cosmos 接收 **RGB** 并输出结构化的**相机坐标系** 3D 框（JSON：
 `label, center, size, orientation`），并可*估计*度量自我位姿；
 adapter 将每个框提升为世界坐标系的 `Detection`（使用调用方提供的
@@ -110,7 +110,7 @@ mem.add_frame(rgb, depth, pose, adapter=cosmos3_adapter)  # adapter.process_fram
 mem.commit()                                              # 仲裁器跨帧去重
 ```
 
-### C2 · SpatialMem → LLM（记忆 → 皮层）— *已发布*
+### C2 · Chronotope → LLM（记忆 → 皮层）— *已发布*
 
 序列化的场景图是上下文总线：紧凑、层次化、
 关系感知、token 预算受限。
@@ -124,7 +124,7 @@ tokenizer）；它按最新优先顺序丢弃整个顶层子树，并附加
 `(N more omitted)` 标记（一个区域绝不会在没有其内容的情况下出现）。
 留出余量以应对模型实际 tokenizer 的偏差。
 
-### C3 · LLM ↔ SpatialMem（皮层将记忆作为工具查询）— *已发布：`spatialmem.SpatialMemTools`*
+### C3 · LLM ↔ Chronotope（皮层将记忆作为工具查询）— *已发布：`tempomem.ChronotopeTools`*
 
 C2 和 C3 是**同一个**记忆访问接缝的两种访问模式：对小型场景传入完整
 序列化图（C2），对大型场景让 LLM 按需拉取（C3）。两者读取的是**同一个
@@ -189,7 +189,7 @@ Cosmos 重新观察。C4 是**有界**请求，不是开放循环：
 
 ### 拓扑 A — Cosmos Reasoner *即* LLM（单 VLM 大脑）
 
-Cosmos 同时负责感知和最终推理/回答；SpatialMem 是片段间的记忆。
+Cosmos 同时负责感知和最终推理/回答；Chronotope 是片段间的记忆。
 全 NVIDIA，接线最简单，GPU 需求大。使用已发布的
 `CosmosReasonVerbalizer` 作为 `answer()` 后端——**当前默认为
 Cosmos Reason 2（`nvidia/cosmos-reason2-8b`）**，可通过 `model=` 参数
@@ -199,7 +199,7 @@ Cosmos Reason 2（`nvidia/cosmos-reason2-8b`）**，可通过 `model=` 参数
 
 Cosmos 仅负责感知（C1）。自带 LLM（Claude/GPT/Llama/Ollama）基于
 序列化图进行推理（C2）并调用记忆工具（C3）。更灵活，推理成本更低，
-无厂商锁定；与 SpatialMem 的 BYO-`Verbalizer` 设计理念一致。
+无厂商锁定；与 Chronotope 的 BYO-`Verbalizer` 设计理念一致。
 
 | | A（Cosmos = 大脑） | B（独立 LLM） |
 |---|---|---|
@@ -261,7 +261,7 @@ on goal / question:
 | 移除 | 破坏的内容 |
 |---|---|
 | − Cosmos 3 | 无感知 / 无法从原始视频中获得 3D 空间锚定 |
-| − SpatialMem | 无持久化；跨片段/会话遗忘（Cosmos 自身的缺口）；LLM 每次都需重读原始帧，耗尽上下文窗口 |
+| − Chronotope | 无持久化；跨片段/会话遗忘（Cosmos 自身的缺口）；LLM 每次都需重读原始帧，耗尽上下文窗口 |
 | − LLM | 无法对已记忆的世界进行通用规划 / 语言理解 / 抽象推理 |
 
 ## 9. 跨会话的 store 兼容性
@@ -301,7 +301,7 @@ on goal / question:
 
 ## 12. 非目标
 
-继承 SpatialMem 的非目标：**不是** SLAM（位姿由上游提供），**不是**动作 /
+继承 Chronotope 的非目标：**不是** SLAM（位姿由上游提供），**不是**动作 /
 运动规划层（由消费方/LLM 负责），**不是**新的 VLM。
 **v0 是单摄像头、单智能体。** 多摄像头/多智能体需要本设计尚不具备的原语：
 逐观测的摄像头/智能体来源标注、单写者协调方案（未来 gRPC/服务外观负责写；
@@ -324,16 +324,16 @@ on goal / question:
 PERCEIVE→REMEMBER→REASON→ACT 全链路贯穿一个 **tick/trace id**。
 记录每次 C3 工具调用（名称、参数、返回的 `node_id` 列表、延迟）。
 记录溯源链：LLM 回答 → 被引用的 `node_id` → 源观测值/检测结果 → Cosmos 片段。
-接入现有的 `mem.stats()` / `mem.dump()` / `spatialmem.events` 日志。
+接入现有的 `mem.stats()` / `mem.dump()` / `tempomem.events` 日志。
 
 ## 15. 构建阶段
 
 | 阶段 | 交付物 | 状态 |
 |---|---|---|
 | P0 | `CosmosReasonVerbalizer`（回答后端，当前使用 Cosmos Reason 2） | ✅ 已发布（核心库） |
-| P1 | `Cosmos3PerceptionAdapter`（C1）+ 几何提升 + `ImageEncoder`——需要 GPU + schema 探测 | ⬜ 在 `spatialmem-perception` |
-| P2 | 记忆即工具（C3）——`SpatialMemTools`（schema + 调度，参数已验证） | ✅ 已发布 |
-| P2+ | 封装 `SpatialMemTools` 的轻量 MCP 服务器 | ⬜ |
+| P1 | `Cosmos3PerceptionAdapter`（C1）+ 几何提升 + `ImageEncoder`——需要 GPU + schema 探测 | ⬜ 在 `worldsense` |
+| P2 | 记忆即工具（C3）——`ChronotopeTools`（schema + 调度，参数已验证） | ✅ 已发布 |
+| P2+ | 封装 `ChronotopeTools` 的轻量 MCP 服务器 | ⬜ |
 | P3 | 主动感知循环（C4）——有界 | ⬜ |
 | P4 | 端到端智能体演示：流式场景 → 带记忆的多轮规划 | ⬜ |
 
@@ -342,7 +342,7 @@ PERCEIVE→REMEMBER→REASON→ACT 全链路贯穿一个 **tick/trace id**。
 - 复用 `bench.recall_at_k` 评估检索质量。
 - **"记忆优势"评估：** 仅凭跨片段/跨会话持久化才能回答的问题
   （片段 1 中看到的对象，在片段 9 中被询问）——仅用 Cosmos（有界上下文）
-  会失败；Cosmos+SpatialMem 通过。这个数字证明的是架构，而非单个组件。
+  会失败；Cosmos+Chronotope 通过。这个数字证明的是架构，而非单个组件。
 - **每 tick 的延迟预算**，分别报告：感知（采样）、
   推理（按需），以及**维护**（`consolidate()` 是 O(n²)，
   `candidates_near()` 在计划中的 R-tree 到位之前是线性 AABB 扫描——
@@ -366,7 +366,7 @@ PERCEIVE→REMEMBER→REASON→ACT 全链路贯穿一个 **tick/trace id**。
 
 ```python
 import numpy as np
-from spatialmem import SpatialMemory
+from tempomem import SpatialMemory
 
 def stub_llm(context: str, question: str) -> str:        # swap for Claude/GPT/Ollama
     return f"(reasoning over)\n{context}\nQ: {question}"
@@ -387,7 +387,7 @@ print(stub_llm(ctx, "where is the mug?"))
 
 ## 19. 一段话总结
 
-> Cosmos 3 感知并对视频片段进行物理推理；SpatialMem 将所见内容
+> Cosmos 3 感知并对视频片段进行物理推理；Chronotope 将所见内容
 > 记忆为持久化、可查询的 3D 场景图；LLM 基于该记忆进行规划和语言交互。
-> Cosmos 感知，SpatialMem 记忆，LLM 思考——
+> Cosmos 感知，Chronotope 记忆，LLM 思考——
 > 而 NVIDIA 自家旗舰报告已明确指出，这颗海马体目前仍然缺失。

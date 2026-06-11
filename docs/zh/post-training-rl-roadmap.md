@@ -3,7 +3,7 @@
 # 后训练与强化学习路线图 — 训练哪些模型，以及如何训练
 
 **状态：** 设计 / 前瞻性。配套文档：
-[cosmos3-spatialmem-llm-brain.md](cosmos3-spatialmem-llm-brain.md)（具身大脑架构）。
+[cosmos3-tempomem-llm-brain.md](cosmos3-tempomem-llm-brain.md)（具身大脑架构）。
 **受众：** 负责在三脑（感知 VLM · 空间记忆 · 推理 LLM）之间分配训练预算的任何人。
 **范围：** 哪些组件做后训练（SFT），哪些做强化学习（RL），哪些保持冻结，以及支撑整个流程的数据飞轮。
 
@@ -15,11 +15,11 @@
 
 | 组件 | 所在位置 | 做后训练？ | 方法 | 优先级 |
 |---|---|---|---|---|
-| **推理皮层**（`Reasoner` / `Brain.ask`） | `spatialmem-brain` | ✅ 最高价值 | SFT 冷启动 → **RL（RLVR）** | **P1** |
-| **Cosmos 感知 VLM** | `spatialmem-perception` | ✅ 但仅 SFT | 监督学习 / 蒸馏（格式 + 定位） | P2 |
-| **C4 主动感知策略**（"仔细观察节点 N"） | `spatialmem-brain` | ⚠️ 可选 | 规则 v0 → 之后做**策略 RL** | P3 |
-| **CLIP/SigLIP 裁剪编码器** | `spatialmem-perception` | ❌ 避免 | 冻结——见 §6 | — |
-| **SpatialMem 融合/仲裁器** | `spatialmem`（核心） | ❌ 无模型 | 阈值**调参**（搜索），而非训练 | — |
+| **推理皮层**（`Reasoner` / `Brain.ask`） | `mindloop` | ✅ 最高价值 | SFT 冷启动 → **RL（RLVR）** | **P1** |
+| **Cosmos 感知 VLM** | `worldsense` | ✅ 但仅 SFT | 监督学习 / 蒸馏（格式 + 定位） | P2 |
+| **C4 主动感知策略**（"仔细观察节点 N"） | `mindloop` | ⚠️ 可选 | 规则 v0 → 之后做**策略 RL** | P3 |
+| **CLIP/SigLIP 裁剪编码器** | `worldsense` | ❌ 避免 | 冻结——见 §6 | — |
+| **Chronotope 融合/仲裁器** | `tempomem`（核心） | ❌ 无模型 | 阈值**调参**（搜索），而非训练 | — |
 
 ---
 
@@ -64,13 +64,13 @@ reward =  w1 · task_success        # 答案与 ground truth 匹配（eval harne
 - 让皮层通过工具执行动作，
 - 用上述奖励函数打分。
 
-SpatialMem 是 RL 循环的世界状态/记忆后端；eval harness 是奖励来源。无需构建新的模拟器即可启动。
+Chronotope 是 RL 循环的世界状态/记忆后端；eval harness 是奖励来源。无需构建新的模拟器即可启动。
 
 ---
 
 ## 2. Cosmos 感知 VLM — 仅 SFT，不做 RL（P2）
 
-感知组件（`spatialmem-perception` 中的 `Cosmos3PerceptionAdapter`）将 RGB 图像转换为结构化 3D 包围盒。保持**监督学习**的两个原因：
+感知组件（`worldsense` 中的 `Cosmos3PerceptionAdapter`）将 RGB 图像转换为结构化 3D 包围盒。保持**监督学习**的两个原因：
 
 - **密集 ground truth 存在。** 3D 包围盒/标签可以直接标注（或从更强的教师模型蒸馏）。当你拥有逐输出目标时，监督学习的样本效率远高于 RL。
 - **目标是单步的。** "给定这帧，输出这些包围盒"不存在 RL 能够解决的序列信用分配问题。
@@ -98,11 +98,11 @@ reward = info_gain(confidence_after − confidence_before)  −  action_cost(mov
 
 ## 4. CLIP/SigLIP 裁剪编码器 — 冻结（不训练）
 
-裁剪编码器生成 SpatialMem 存储的特征向量。**不要原地微调它。** SpatialMem 在 store 创建时锁定 `embedding_dim`，并假定编码器永久不变（大脑设计 §9 / store 兼容性）：重新训练编码器会改变嵌入空间，从而使所有已持久化的向量失效。"更换编码器"的唯一正确方式是**重新嵌入到一个全新的 store**——这是迁移操作，而非训练步骤。将编码器视为固定的、承重的依赖项。
+裁剪编码器生成 Chronotope 存储的特征向量。**不要原地微调它。** Chronotope 在 store 创建时锁定 `embedding_dim`，并假定编码器永久不变（大脑设计 §9 / store 兼容性）：重新训练编码器会改变嵌入空间，从而使所有已持久化的向量失效。"更换编码器"的唯一正确方式是**重新嵌入到一个全新的 store**——这是迁移操作，而非训练步骤。将编码器视为固定的、承重的依赖项。
 
 ---
 
-## 5. SpatialMem 融合/仲裁器 — 调参，而非训练
+## 5. Chronotope 融合/仲裁器 — 调参，而非训练
 
 记忆层（融合、合并仲裁器、衰减、分裂）是**纯算法，无神经模型。** 其 `FusionConfig` 阈值（`tau_merge`、`tau_ambig`、`w_geom/w_iou/w_sem/w_label`、衰减半衰期……）是**超参数**，通过网格搜索/贝叶斯搜索针对 `bench.recall_at_k` 进行调整，而非通过梯度下降学习。明确维持这一区分，避免"改进记忆"被错误归类为模型训练任务。
 
@@ -130,7 +130,7 @@ reward = info_gain(confidence_after − confidence_before)  −  action_cost(mov
 | T0 | 搭建作为环境的 eval（回放 clip → store → 问题 → 奖励） | RL/SFT harness |
 | T1 | 收集并筛选皮层轨迹；对 `Reasoner` 做 **SFT 冷启动** | 工具使用基础策略 |
 | T2 | 对皮层奖励做 **RL（GRPO/RLVR）** | 定位准确、步数更少的皮层 |
-| T3 | 在 `spatialmem-perception` 中做感知**格式/定位 SFT** | 稳定的 3D 包围盒 JSON |
+| T3 | 在 `worldsense` 中做感知**格式/定位 SFT** | 稳定的 3D 包围盒 JSON |
 | T4 | 记录 C4 重看轨迹；训练**主动感知策略** | 学习的观察控制器 |
 
 预算经验法则：**RL 开支的大部分用于 T1–T2（皮层）。** T3 是监督学习。T4 可选且排在最后。

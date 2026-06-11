@@ -1,14 +1,14 @@
 > 🌐 **English** · [中文](README.zh.md)
 
-# spatialmem-brain
+# mindloop
 
-The **brain / LLM layer** for **[SpatialMem](https://github.com/wikieden/spatialmem)** —
+The **brain / LLM layer** for **[Chronotope](https://github.com/wikieden/tempomem)** —
 binds memory + reasoning (+ optional perception) into one cognitive loop.
 
-> **Why a separate repo?** SpatialMem core is the *memory* (hippocampus) and
+> **Why a separate repo?** Chronotope core is the *memory* (hippocampus) and
 > stays numpy-only with just the protocol seams. The concrete LLM integration
 > and orchestration — the *brain* — lives here, like perception lives in
-> `spatialmem-perception`. Core ships the `Verbalizer` protocol; this repo ships
+> `worldsense`. Core ships the `Verbalizer` protocol; this repo ships
 > the model that fills it and the loop that drives it.
 
 ## What's here
@@ -23,34 +23,34 @@ binds memory + reasoning (+ optional perception) into one cognitive loop.
 ## Architecture
 
 ```
-RGB(-D) ─► [spatialmem-perception adapter] ─► Detections
+RGB(-D) ─► [worldsense adapter] ─► Detections
                                                │
                                                ▼
-                                   spatialmem (memory: fuse/persist/query)
+                                   tempomem (memory: fuse/persist/query)
                                                │ serialize
                                                ▼
                        Brain.ask ─► Reasoner (LLM) ─► Answer(text, cited ids)
 ```
 
-Full system design: [docs/cosmos3-spatialmem-llm-brain.md](docs/en/cosmos3-spatialmem-llm-brain.md).
+Full system design: [docs/cosmos3-tempomem-llm-brain.md](docs/en/cosmos3-tempomem-llm-brain.md).
 Production three-layer brain (Deliberation / Habit / Reflex) — proposal &
 decision record: [docs/brain-architecture.md](docs/en/brain-architecture.md).
 
 ## Install
 
 ```bash
-pip install spatialmem-brain                 # memory + reasoning
-pip install spatialmem-brain[perception]     # + spatialmem-perception (the eyes)
+pip install mindloop                 # memory + reasoning
+pip install mindloop[perception]     # + worldsense (the eyes)
 ```
 
-(`spatialmem` is the core dependency; `spatialmem-perception` is the optional
+(`tempomem` is the core dependency; `worldsense` is the optional
 full-stack extra.)
 
 ## Quickstart (Topology B — BYO LLM)
 
 ```python
-from spatialmem import SpatialMemory
-from spatialmem_brain import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
+from tempomem import SpatialMemory
+from mindloop import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
 
 mem = SpatialMemory.open("home.smem", embedding_dim=512)
 brain = Brain(mem, VerbalizerReasoner(CosmosReasonVerbalizer(model="nvidia/cosmos-reason2-8b")))

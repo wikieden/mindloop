@@ -3,26 +3,26 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "spatialmem-brain"
+name = "mindloop"
 version = "0.1.0a0"
-description = "The brain/LLM layer for SpatialMem — Reasoner + Brain cognitive loop + Cosmos Reason verbalizer. Companion to the spatialmem memory core."
+description = "The brain/LLM layer for Chronotope — Reasoner + Brain cognitive loop + Cosmos Reason verbalizer. Companion to the tempomem memory core."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [{ name = "wikieden" }]
-dependencies = ["spatialmem", "numpy"]
+dependencies = ["tempomem", "numpy"]
 
 [project.optional-dependencies]
 # Full stack (memory + perception). Perception is a private companion repo;
 # install it alongside for Brain.observe(rgb, depth, pose) with a real adapter.
-perception = ["spatialmem-perception"]
+perception = ["worldsense"]
 dev = ["pytest", "pytest-cov", "ruff", "pyright"]
 
 [project.urls]
-Core = "https://github.com/wikieden/spatialmem"
+Core = "https://github.com/wikieden/tempomem"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/spatialmem_brain"]
+packages = ["src/mindloop"]
 
 [tool.ruff]
 line-length = 100
@@ -32,7 +32,7 @@ src = ["src", "tests"]
 select = ["E", "F", "I", "B", "UP", "SIM", "PERF", "RUF"]
 
 [tool.pyright]
-include = ["src/spatialmem_brain"]
+include = ["src/mindloop"]
 pythonVersion = "3.10"
 typeCheckingMode = "standard"
 

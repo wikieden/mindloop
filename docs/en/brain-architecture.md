@@ -10,7 +10,7 @@ implemented until they are. The body-contract rules in §11 (B1–B10) **are
 ratified** (owner, 2026-06-11).
 **Audience:** contributors shaping the production brain; integrators porting a
 new robot body.
-**Companion docs:** [cosmos3-spatialmem-llm-brain.md](cosmos3-spatialmem-llm-brain.md)
+**Companion docs:** [cosmos3-tempomem-llm-brain.md](cosmos3-tempomem-llm-brain.md)
 (the memory↔reasoning inner loop this stack wraps),
 [local-serving.md](local-serving.md) (self-hosting the reasoner),
 [post-training-rl-roadmap.md](post-training-rl-roadmap.md) (what to SFT/RL).
@@ -60,7 +60,7 @@ instead of B2R's hand-rolled scene graph / WorldState.
 
 Skill-card instantiation produces a BT plan of **skill verbs** (§4). The
 reference BT runtime, mock body, and simulators live in a separate workspace
-member (`spatialmem-exec`, proposed, §3); real bodies (e.g. Unitree G1) are
+member (`tempomem-exec`, proposed, §3); real bodies (e.g. Unitree G1) are
 independent packages implementing the same `ExecutorAdapter`.
 
 ### 2.3 Reflex — out of scope, on purpose
@@ -72,10 +72,10 @@ code path can loosen a reflex limit.
 ## 3. Package boundaries (D1, D5)
 
 ```
-spatialmem            core: scene-graph memory (L3) + trace (L4, proposed)   numpy-only
-spatialmem-perception eyes: RGB-D → world-frame Detections                   [clip] extra
-spatialmem-brain      THIS: S2 + Episteme skill cards + protocol seams       stdlib core
-spatialmem-exec       proposed: ExecutorAdapter reference impl (BT + MockBody, Genesis behind [sim])
+tempomem            core: scene-graph memory (L3) + trace (L4, proposed)   numpy-only
+worldsense eyes: RGB-D → world-frame Detections                   [clip] extra
+mindloop      THIS: S2 + Episteme skill cards + protocol seams       stdlib core
+tempomem-exec       proposed: ExecutorAdapter reference impl (BT + MockBody, Genesis behind [sim])
 ```
 
 The brain stays stdlib-only in core, exactly like today. It ships **protocols**,
@@ -84,7 +84,7 @@ others ship implementations — same move the memory core made with
 
 | Seam | Protocol (lives here) | Filled by |
 |---|---|---|
-| execution | `ExecutorAdapter` — dispatch plan, stream status, expose capability manifest | `spatialmem-exec`, device packages |
+| execution | `ExecutorAdapter` — dispatch plan, stream status, expose capability manifest | `tempomem-exec`, device packages |
 | reasoning | `Reasoner` / `Verbalizer` (existing) | any OpenAI-compatible endpoint |
 | preference | `PreferenceStore` (L5, proposed) | external (Mem0 or other) |
 
@@ -160,7 +160,7 @@ annotations is honored.
 
 | Layer | What | Where |
 |---|---|---|
-| L3 scene graph | objects, regions, relations, embeddings | `spatialmem` core (shipping) |
+| L3 scene graph | objects, regions, relations, embeddings | `tempomem` core (shipping) |
 | L4 trace (episodic) | plans, outcomes, policy decisions | **into core** (proposed) — traces cite scene node ids; things sharing an id space do not live in separate stores |
 | L5 preference | per-person taste, habits, overrides | **out** — `PreferenceStore` protocol; different lifecycle, privacy, per-user isolation |
 
@@ -216,7 +216,7 @@ hardware safety (dual-channel e-stop, safety PLC, STO/SS1/SLS) is exactly the
 Reflex tier (D4); their error escalation (L2 self-heals IK/nav,
 `ERR_GRASP_FAILED`/`ERR_OBJECT_LOST` rise to L3) is the replan loop; and
 their "world model" slot (semantic map + object state tracking, 100–500 ms
-query budget) is SpatialMem. Their ROS 2 interface is adopted as
+query budget) is Chronotope. Their ROS 2 interface is adopted as
 **ExecutorAdapter wire binding v0**.
 
 Ruled by the owner, 2026-06-11:
@@ -224,7 +224,7 @@ Ruled by the owner, 2026-06-11:
 | # | Rule |
 |---|---|
 | B1 | **The VLA fast path is out of brain scope.** The body-side "VLA module" (a rule-engine + template matcher, <10 ms — not a VLA policy model) dispatches *upstream* of the brain: VLA hit → straight to L2; miss → brain S2. The brain does not own or manage the VLA template library; Episteme stays the brain's own knowledge layer. The <100 ms fast-path requirement therefore does not bind the brain. |
-| B2 | Latency contract accepted: simple task 0.5–2 s, complex 2–10 s, world-model query 100–500 ms (SpatialMem is well under). |
+| B2 | Latency contract accepted: simple task 0.5–2 s, complex 2–10 s, world-model query 100–500 ms (Chronotope is well under). |
 | B3 | `error_code` + `recovery_actions` are standardized into the ExecutorAdapter contract: typed `ERR_*` enum + typed adjustment vocabulary (`position_offset`, `orientation_relax`, `force_adjustment`, …) — never free text. |
 | B4 | Charging/battery tasks = a built-in Episteme card; no new mechanism. |
 | B5 | The brain ships a health-check interface mirroring their L3 init checklist (`llm_model` / `world_model` / `task_library`). |

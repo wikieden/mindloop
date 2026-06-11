@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from spatialmem_brain import Answer, ScriptedReasoner, VerbalizerReasoner
-from spatialmem_brain.reason import _extract_ids
+from mindloop import Answer, ScriptedReasoner, VerbalizerReasoner
+from mindloop.reason import _extract_ids
 
 
 def test_extract_ids_dedup_order() -> None:

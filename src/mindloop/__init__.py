@@ -1,6 +1,6 @@
-"""spatialmem-brain — the brain/LLM layer for SpatialMem.
+"""mindloop — the brain/LLM layer for Chronotope.
 
-Binds `spatialmem` (memory) + a Reasoner (LLM) + optional `spatialmem-perception`
+Binds `tempomem` (memory) + a Reasoner (LLM) + optional `worldsense`
 (eyes) into one cognitive loop. Holds the concrete LLM integration
 (`CosmosReasonVerbalizer`) and the orchestration (`Brain`, `Reasoner`); the core
 ships only the `Verbalizer` protocol + `answer()` seam.

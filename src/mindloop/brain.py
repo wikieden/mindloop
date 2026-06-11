@@ -1,9 +1,9 @@
 """Brain — the cognitive loop binding memory + reasoning (+ optional perception).
 
-`Brain` ties a `spatialmem.SpatialMemory` (the hippocampus) to a `Reasoner` (the
-cortex), with an optional `spatialmem.PerceptionAdapter` (the eyes, from
-`spatialmem-perception`). The tick is: perceive → remember (observe/ingest),
-then on demand retrieve → reason (ask). See docs/cosmos3-spatialmem-llm-brain.md.
+`Brain` ties a `tempomem.SpatialMemory` (the hippocampus) to a `Reasoner` (the
+cortex), with an optional `tempomem.PerceptionAdapter` (the eyes, from
+`worldsense`). The tick is: perceive → remember (observe/ingest),
+then on demand retrieve → reason (ask). See docs/cosmos3-tempomem-llm-brain.md.
 
 v0 is single-threaded; serialize all access (the core store is one sqlite
 connection). Active perception (LLM → re-look) is future work.
@@ -17,7 +17,7 @@ from .reason import Answer, Reasoner
 
 if TYPE_CHECKING:
     import numpy as np
-    from spatialmem import Detection, PerceptionAdapter, SpatialMemory
+    from tempomem import Detection, PerceptionAdapter, SpatialMemory
 
 
 class Brain:
@@ -48,7 +48,7 @@ class Brain:
         """Perceive → remember: run a posed frame through perception, then fuse.
 
         Needs a `PerceptionAdapter` (here or at construction) — perception lives
-        in the `spatialmem-perception` companion repo. Returns the commit stats.
+        in the `worldsense` companion repo. Returns the commit stats.
         """
         self._mem.add_frame(rgb, depth, pose, adapter=adapter or self._adapter, episode=episode)
         return self._mem.commit()

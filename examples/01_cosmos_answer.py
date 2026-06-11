@@ -1,6 +1,6 @@
-"""SpatialMem + NVIDIA Cosmos Reason — answer over the scene graph.
+"""Chronotope + NVIDIA Cosmos Reason — answer over the scene graph.
 
-Cosmos Reason is NVIDIA's Physical-AI reasoning VLM. SpatialMem keeps the
+Cosmos Reason is NVIDIA's Physical-AI reasoning VLM. Chronotope keeps the
 persistent 3D memory; Cosmos is the reasoning brain that reads the serialized
 scene graph and answers. `CosmosReasonVerbalizer` wraps any OpenAI-compatible
 Cosmos NIM (hosted build.nvidia.com gateway or a self-hosted NIM).
@@ -17,9 +17,9 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from spatialmem import HashEncoder, SpatialMemory, SyntheticScene, stream
+from tempomem import HashEncoder, SpatialMemory, SyntheticScene, stream
 
-from spatialmem_brain import CosmosReasonVerbalizer
+from mindloop import CosmosReasonVerbalizer
 
 DIM = 64
 

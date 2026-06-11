@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from spatialmem_brain import ScriptedReasoner, citation_compliance
+from mindloop import ScriptedReasoner, citation_compliance
 
 
 def test_citation_compliance_rates() -> None:

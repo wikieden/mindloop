@@ -1,14 +1,14 @@
 > 🌐 [English](README.md) · **中文**
 
-# spatialmem-brain
+# mindloop
 
-**[SpatialMem](https://github.com/wikieden/spatialmem)** 的**大脑 / LLM 层** ——
+**[Chronotope](https://github.com/wikieden/tempomem)** 的**大脑 / LLM 层** ——
 将记忆 + 推理（+ 可选感知）绑定成一个认知循环。
 
-> **为什么要单独建一个仓库？** SpatialMem 核心是*记忆*（海马体），
+> **为什么要单独建一个仓库？** Chronotope 核心是*记忆*（海马体），
 > 保持纯 numpy 依赖，仅暴露协议接缝。具体的 LLM 集成
 > 与编排——即*大脑*——就在这里，就像感知功能放在
-> `spatialmem-perception` 一样。核心发布 `Verbalizer` 协议；本仓库发布
+> `worldsense` 一样。核心发布 `Verbalizer` 协议；本仓库发布
 > 填充该协议的模型以及驱动它的循环。
 
 ## 内容一览
@@ -23,34 +23,34 @@
 ## 架构
 
 ```
-RGB(-D) ─► [spatialmem-perception adapter] ─► Detections
+RGB(-D) ─► [worldsense adapter] ─► Detections
                                                │
                                                ▼
-                                   spatialmem (memory: fuse/persist/query)
+                                   tempomem (memory: fuse/persist/query)
                                                │ serialize
                                                ▼
                        Brain.ask ─► Reasoner (LLM) ─► Answer(text, cited ids)
 ```
 
-完整系统设计：[docs/cosmos3-spatialmem-llm-brain.md](docs/zh/cosmos3-spatialmem-llm-brain.md)。
+完整系统设计：[docs/cosmos3-tempomem-llm-brain.md](docs/zh/cosmos3-tempomem-llm-brain.md)。
 生产版三层大脑（慢思考 / 习惯 / 反射）—— 提案与决策记录：
 [docs/brain-architecture.md](docs/zh/brain-architecture.md)。
 
 ## 安装
 
 ```bash
-pip install spatialmem-brain                 # 记忆 + 推理
-pip install spatialmem-brain[perception]     # + spatialmem-perception（感知眼）
+pip install mindloop                 # 记忆 + 推理
+pip install mindloop[perception]     # + worldsense（感知眼）
 ```
 
-（`spatialmem` 是核心依赖；`spatialmem-perception` 是可选的
+（`tempomem` 是核心依赖；`worldsense` 是可选的
 完整栈扩展。）
 
 ## 快速上手（拓扑 B — 自带 LLM）
 
 ```python
-from spatialmem import SpatialMemory
-from spatialmem_brain import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
+from tempomem import SpatialMemory
+from mindloop import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
 
 mem = SpatialMemory.open("home.smem", embedding_dim=512)
 brain = Brain(mem, VerbalizerReasoner(CosmosReasonVerbalizer(model="nvidia/cosmos-reason2-8b")))
