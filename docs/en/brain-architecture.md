@@ -4,10 +4,11 @@
 
 **Status:** proposal v1 (brainstorm output, 2026-06-11). This is the decision
 record for the formal, open-source, multi-device productionization of
-Brain2Robot, refactored **into this package**. Decisions D1–D5 and three design
-knobs (§9) are recommended but **pending ratification** — nothing below is
-implemented until they are. The body-contract rules in §11 (B1–B10) **are
-ratified** (owner, 2026-06-11).
+Brain2Robot, refactored **into this package**. Decisions D1–D5 and the three
+design knobs K1–K3 (§9) **are ratified** (owner, 2026-06-15) — this is now the
+authoritative design, though no code is written until an implementation plan is
+approved. The body-contract rules in §11 (B1–B10) **are ratified** (owner,
+2026-06-11).
 **Audience:** contributors shaping the production brain; integrators porting a
 new robot body.
 **Companion docs:** [cosmos3-tempomem-llm-brain.md](cosmos3-tempomem-llm-brain.md)
@@ -91,18 +92,32 @@ others ship implementations — same move the memory core made with
 What does **not** move into this package: py-trees, Genesis/Isaac, ROS2/Redis
 transport, scene assets — B2R's L2/L1/sim/transport stay outside the seam.
 
-## 4. Action interface: skill verbs + capability manifest (D3)
+## 4. Action interface: skill verbs + two-tier capability manifest (D3, ratified)
 
-The 7-DOF-EE + gripper canonical action space is **dropped, not fixed**. The
-brain plans in **skill verbs** (`navigate`, `pick`, `place`, `open`,
-`operate_appliance`, …); each device publishes a **capability manifest** —
-which verbs it supports, parameter domains, appliance types. The planner
-queries the manifest at plan time: a verb the body lacks → degrade or refuse,
-never emit.
+The 7-DOF-EE + gripper canonical action space is **dropped as the L3 interface
+language, not fixed** — a body may still use it internally inside a VLA skill,
+but the brain never speaks it. The brain plans in **skill verbs** (`navigate`,
+`pick`, `place`, `open`, `operate_appliance`, …); each device publishes a
+**two-tier capability manifest**:
+
+- **verb tier** (brain-facing) — which verbs it supports, parameter domains,
+  appliance types. The planner queries it at plan time: a verb the body lacks →
+  degrade or refuse, never emit.
+- **Body Profile tier** (executor-facing, absorbed from B2R
+  `embodiment_adaptation.md`) — DOF/joint table, sensor config, gripper
+  mapping, base type; auto-registered from URDF/vendor API at body bring-up.
+  Exposed via `/l2/capabilities` (proposed seam; missing in the G1-D spec).
+
+This is B2R's **Soma abstraction** ("swap the body, keep the mind") made into an
+engineering fact: a new robot = a new Body Profile + a package implementing the
+verb set; the brain changes nothing. The B2R **Action Normalizer** (canonical →
+IK → joint angles) and **Sensor Stem** (heterogeneous sensors → fixed-length
+tokens, zero-pad missing) stay *inside* the device package, behind the seam —
+their cost stays O(n + m) (n skills + m bodies), not O(n × m).
 
 Multi-device support = more manifests, not new geometry. Bimanual, whole-body,
 locomotion = more verbs. Joint-space canonicalization is an L1/L2 problem the
-brain refuses to own.
+brain refuses to own. See §5 (D5) for the per-body package model.
 
 ## 5. Episteme — the life-skill knowledge layer
 
@@ -144,17 +159,33 @@ Attribute supply: fabric/color/state come from perception Route D (VLM
 semantic enrichment → node `attributes`) — the laundry rules are that field's
 first real consumer.
 
-## 6. Safety — Phylax, two tiers (D4)
+## 6. Safety — Phylax, three-tier defense-in-depth (D4, ratified)
 
-| Tier | What | Where | Portable? |
-|---|---|---|---|
-| **Policy** (semantic) | forbidden zones, human-proximity rules, action whitelists; every plan passes a declarative policy check before dispatch | between S2 and the executor seam | yes — config, ships with brain |
-| **Reflex** (physical) | e-stop, torque/velocity limits, collision | device firmware | no — per-body, brain reads status only |
+Absorbed from B2R `safety_architecture.md`. Three tiers at three timescales; an
+upper tier's failure is caught by a lower one. Neural nets may fail (VLM
+misjudges, VLA grasps air) but the symbolic net and the realtime layer are
+never bypassed by a semantic error.
+
+| Tier | ~Freq | What | Where | Portable? |
+|---|---|---|---|---|
+| **Policy** (semantic) | ~1 Hz | semantic hard-constraints (human-proximity speed cap, blade ops adult-only, open-flame needs supervision; injected as a KV-fixed segment each plan cycle) + role-based permission gating + **safety-class replan escalation**: a safety error never reroutes or retries — stop immediately, speak | mindloop (S2) | yes — config ships with brain |
+| **Symbolic** (BT) | ~5 Hz | BT precondition net (VLA may fail, the symbolic net is not bypassed) + parallel safety nodes (collision → SAFETY_STOP straight to L1, bypassing the BT main sequence and L3) + thermal-safety rules (refuse GRASP/PLACE on a heating vessel until the framework is ready) | bodylink (S1 runtime) | yes — ships with BT runtime |
+| **Reflex** (physical) | 1 kHz | SAFETY_STOP hard-stop · torque/velocity limiting · per-body hardware (dual-channel e-stop SIL3, force+ToF+bumper triple-redundant collision, mechanical+software dual limits) | device firmware | no — per-body, brain reads status only |
+
+**Arbitration (verbatim from B2R):** signal priority is `SAFETY_STOP` >
+safety-class escalation > permission gating > symbolic precondition net >
+thermal/proximity slow-down > normal task. The governing rule — **an upper
+layer's "want to" can never override a lower layer's "must not"; the guardian
+tightens one-way only (a lower tier can veto an upper, never the reverse).**
+The four safety modes (teaching / auto / safe-stop / emergency-stop) live in
+the device-side state machine.
 
 Every policy decision and every dispatched plan lands in the L4 trace with the
 node ids it touched — audit closes end-to-end. Community skill cards are
 untrusted input: signature + review gate before a card with `safety:`
-annotations is honored.
+annotations is honored. Inherited open items from B2R: thermal-sensing closed
+loop, formal hazard analysis / FMEA, child-permission granularity,
+"supervision" detection criteria.
 
 ## 7. Memory (D2)
 
@@ -186,18 +217,25 @@ adjacent same-class instances (mitigated by K1 tracking) and ghost nodes after
 object moves (needs frustum negative evidence; Route D "`#id` moved" handles
 the rest).
 
-## 9. Open decisions (pending ratification)
+## 9. Decisions — all ratified (owner, 2026-06-15)
 
-| # | Decision | Recommendation |
+| # | Decision | Ruling |
 |---|---|---|
-| D1 | executor scoping | brain = S2 only; execution behind `ExecutorAdapter`; L2/L1/sim/transport stay out |
-| D2 | memory unification | L3 + L4 into core; L5 behind external protocol |
-| D3 | action space | skill verbs + capability manifest; drop 7+1 canonical space |
-| D4 | safety | two-tier Phylax: portable policy layer + per-body reflex |
-| D5 | workspace shape | 4 members (`core / perception / brain / exec`); real bodies out-of-tree; umbrella naming deferred |
+| D1 | executor scoping | brain = S2 only = the body team's L3 slot (`/l3/task_execute`); execution behind `ExecutorAdapter`; L2/L1/sim/transport stay out |
+| D2 | memory unification | L3 + L4 into `tempomem` core; L5 behind external `PreferenceStore` protocol |
+| D3 | action space | skill verbs + **two-tier** capability manifest (verb tier + Body Profile tier); 7+1 demoted to in-device VLA detail, not the L3 language |
+| D4 | safety | **three-tier** Phylax: portable policy (mindloop) + symbolic BT net (bodylink) + per-body reflex (firmware) |
+| D5 | workspace shape | 4 members (`tempomem / worldsense / mindloop / bodylink`); **bodylink = the adaptation framework, each robot = one out-of-tree device package** (G1-D first); product name Chronotope, root-repo rename optional |
 | K1 | track-before-fuse | yes — SAM2/ByteTrack `track_id` into `Detection.aux`, arbiter uses it as prior |
 | K2 | skill-card format v1 | flat steps + rules; DAG reserved via schema version |
 | K3 | crystallization gate | always human-reviewed before a card enters the library |
+
+**Multi-body is a first-class requirement, not a future nicety.** bodylink
+ships the `ExecutorAdapter` protocol + Body Profile Registry + verb manifest +
+reference BT runtime + MockBody; every body (G1-D wheeled 32-DOF first, then
+legged / desktop-arm / future forms) is a separate out-of-tree package filling
+it, differentiated only by Profile + verb set. The Sensor Stem zero-pad policy
+keeps sensor-config differences from leaking past the seam.
 
 ## 10. Naming (per B2R convention: philosophy-first, engineering subtitle)
 
