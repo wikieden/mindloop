@@ -41,11 +41,12 @@
 | `Reasoner` / `Verbalizer` 协议 + Scripted / Verbalizer / CosmosReason | ✅ 已交付 | `reason.py`、`verbalizers.py` |
 | `ExecutorAdapter` 协议 + `SubTask` / `StatusUpdate` / `CapabilityManifest` + 类型化 `ErrorCode` / `RecoveryHint` | ✅ **P0 完成** | `execute.py` |
 | `PreferenceStore`（L5）占位 + `HealthReport`（B5）+ `Brain.health()` | ✅ **P0 完成** | `preference.py`、`health.py`、`brain.py` |
-| `MockBody` 参考执行器 + `bodylink` 包 | ⬜ **P0 —— 进行中（Chunk B）** | — |
+| `MockBody` 参考执行器 + `bodylink` 包 | ✅ **P0 完成** | `bodylink/` |
 
-执行缝（D1/D3）现已存在于 `execute.py`：开放词汇动词、带 node id 的 `SubTask`
-（B9）、类型化 `ErrorCode`/`RecoveryHint`（B3）、双层 `CapabilityManifest`
-（D3）。P0 剩余 = `bodylink` 包 + `MockBody`。P0 以下全部是**全新** L3 能力。
+P0 完成：执行缝（D1/D3）落在 `execute.py`（开放词汇动词、带 node id 的
+`SubTask`（B9）、类型化 `ErrorCode`/`RecoveryHint`（B3）、双层
+`CapabilityManifest`（D3）），`bodylink` 成员发布 `MockBody` 来填它。P0 以下
+全部是**全新** L3 能力 —— **下一步 P1**。
 
 ---
 
@@ -70,7 +71,7 @@ P0 契约 ─► P1 意图+规划 ─► P2 Episteme ─► P3 Phylax ─► P4 
 
 ## 3. 各阶段
 
-### P0 —— 缝契约 & 测试脚手架  ·  进行中
+### P0 —— 缝契约 & 测试脚手架  ·  ✅ 完成（2026-06-16）
 
 **目标：** 冻结 L3 规划所依赖的协议，使 P1+ 是纯大脑逻辑。
 
@@ -80,17 +81,26 @@ P0 契约 ─► P1 意图+规划 ─► P2 Episteme ─► P3 Phylax ─► P4 
   携带 + 回带（B9）、类型化错误/恢复（B3）、双层清单（D3）。
 - ✅ `PreferenceStore` 协议占位（L5，D2）—— `preference.py`，临时。
 - ✅ `HealthReport` + `Brain.health()`（B5）—— `health.py`、`brain.py`。
-- ✅ 契约测试（`tests/test_execute.py`）：终态状态、类型化错误、清单动词门控、
-  node id 携带/回带、`ExecutorAdapter` runtime-checkable、`Brain.health`。
-  （mindloop：30 passed，ruff clean，pyright 0。）
-- ⬜ **Chunk B：** 新建 `bodylink` workspace 成员（D5 第 4 包）+ 注册进根
-  `pyproject.toml`；`MockBody` 实现 + dispatch 往返测试。
+- ✅ `bodylink` workspace 成员已建（D5 第 4 包）+ 注册进根 `pyproject.toml`
+  （`[tool.uv.workspace]` + `[tool.uv.sources]`）。`MockBody` 参考
+  `ExecutorAdapter` + `g1d_manifest()`（B10）+ `UnsupportedVerbError`。
+  在 workspace 里 build+install（`uv sync`）。
+- ✅ 契约测试：`mindloop/tests/test_execute.py`（缝值类型）+
+  `bodylink/tests/test_mock_body.py`（dispatch 往返、node id 回带、类型化失败
+  恢复、runtime-checkable 符合性、动词门控）。
+
+> `bodylink` 暂为 **workspace 内目录**（根仓），尚未像另三个那样独立 GitHub
+> 仓/submodule。发布前毕业为独立仓（需 owner 放行 —— 建仓是外向动作）。
+> 在此标注以免遗漏。
 
 **B2R 参考：** `code_framework.md`、`system_integration.md`、
 `embodiment_adaptation.md`（Body Profile 层）。
-**测试：** 缝值类型契约（已完成）；MockBody dispatch 往返（Chunk B）。
-**出口：** 所有缝协议冻结 ✅；`bodylink` 在 workspace 里 build+install
-（Chunk B）；node-id + 类型化错误契约锁定 ✅。
+**测试：** 缝值类型契约 + MockBody dispatch 往返 —— 完成。
+**验证：** 本地 **189 passed, 2 skipped · ruff clean · pyright 0**（tempomem +
+mindloop + worldsense + bodylink）。RTX PRO 交叉验证待办（P0 收尾时主机离线；
+此前已验证为可用 dev 环境，176 测试）。
+**出口：** 所有缝协议冻结 ✅；`bodylink` build+install ✅；node-id + 类型化
+错误契约锁定 ✅。
 
 ### P1 —— 意图路由 + 规划骨架  ·  M-L3.1  ·  S2 脊椎
 
