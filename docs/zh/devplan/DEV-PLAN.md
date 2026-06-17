@@ -38,11 +38,14 @@
 |---|---|---|
 | `Brain.ingest`（记忆） | ✅ 已交付 | `brain.py` |
 | `Brain.ask`（检索 → 推理 → 带引用 Answer） | ✅ 已交付 | `brain.py` |
-| `Reasoner` 协议 + Scripted / Verbalizer / CosmosReason | ✅ 已交付 | `reasoner.py`、`verbalizer.py` |
-| `ExecutorAdapter` 协议 + `SubTask` / `StatusUpdate` / `CapabilityManifest` | ✅ 已交付 | `protocols.py` |
-| `MockBody` 参考执行器 | ✅ 已交付 | `bodylink` |
+| `Reasoner` / `Verbalizer` 协议 + Scripted / Verbalizer / CosmosReason | ✅ 已交付 | `reason.py`、`verbalizers.py` |
+| `ExecutorAdapter` 协议 + `SubTask` / `StatusUpdate` / `CapabilityManifest` + 类型化 `ErrorCode` / `RecoveryHint` | ✅ **P0 完成** | `execute.py` |
+| `PreferenceStore`（L5）占位 + `HealthReport`（B5）+ `Brain.health()` | ✅ **P0 完成** | `preference.py`、`health.py`、`brain.py` |
+| `MockBody` 参考执行器 + `bodylink` 包 | ⬜ **P0 —— 进行中（Chunk B）** | — |
 
-以下全部是**全新** L3 能力。
+执行缝（D1/D3）现已存在于 `execute.py`：开放词汇动词、带 node id 的 `SubTask`
+（B9）、类型化 `ErrorCode`/`RecoveryHint`（B3）、双层 `CapabilityManifest`
+（D3）。P0 剩余 = `bodylink` 包 + `MockBody`。P0 以下全部是**全新** L3 能力。
 
 ---
 
@@ -67,18 +70,27 @@ P0 契约 ─► P1 意图+规划 ─► P2 Episteme ─► P3 Phylax ─► P4 
 
 ## 3. 各阶段
 
-### P0 —— 缝契约 & 测试脚手架  ·  基本完成
+### P0 —— 缝契约 & 测试脚手架  ·  进行中
 
 **目标：** 冻结 L3 规划所依赖的协议，使 P1+ 是纯大脑逻辑。
 
-- ✅ `ExecutorAdapter` + 值类型（`protocols.py`）。
-- ✅ `MockBody`（`bodylink`）。
-- ⬜ `PreferenceStore` 协议占位（L5，D2）—— 仅接口，外部实现。
-- ⬜ health-check 接口，对应本体 L3 初始化清单（B5）。
+- ✅ `ExecutorAdapter` 协议 + 值类型（`SubTask`、`StatusUpdate`、
+  `CapabilityManifest`/`BodyProfile`/`VerbSpec`、`TaskStatus`/`ErrorCode`/
+  `RecoveryKind`/`RecoveryHint`）—— `execute.py`。开放词汇动词（D3）、node id
+  携带 + 回带（B9）、类型化错误/恢复（B3）、双层清单（D3）。
+- ✅ `PreferenceStore` 协议占位（L5，D2）—— `preference.py`，临时。
+- ✅ `HealthReport` + `Brain.health()`（B5）—— `health.py`、`brain.py`。
+- ✅ 契约测试（`tests/test_execute.py`）：终态状态、类型化错误、清单动词门控、
+  node id 携带/回带、`ExecutorAdapter` runtime-checkable、`Brain.health`。
+  （mindloop：30 passed，ruff clean，pyright 0。）
+- ⬜ **Chunk B：** 新建 `bodylink` workspace 成员（D5 第 4 包）+ 注册进根
+  `pyproject.toml`；`MockBody` 实现 + dispatch 往返测试。
 
-**B2R 参考：** `code_framework.md`、`system_integration.md`。
-**测试：** MockBody dispatch 往返；协议符合性（已完成）。
-**出口：** 所有缝协议冻结；node-id + 类型化错误契约锁定。
+**B2R 参考：** `code_framework.md`、`system_integration.md`、
+`embodiment_adaptation.md`（Body Profile 层）。
+**测试：** 缝值类型契约（已完成）；MockBody dispatch 往返（Chunk B）。
+**出口：** 所有缝协议冻结 ✅；`bodylink` 在 workspace 里 build+install
+（Chunk B）；node-id + 类型化错误契约锁定 ✅。
 
 ### P1 —— 意图路由 + 规划骨架  ·  M-L3.1  ·  S2 脊椎
 

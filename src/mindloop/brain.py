@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from .health import HealthReport
 from .reason import Answer, Reasoner
 
 if TYPE_CHECKING:
@@ -78,3 +79,15 @@ class Brain:
         else:
             context = self._mem.serialize(format="prompt", max_tokens=self._budget)
         return self._reasoner.reason(question, context)
+
+    def health(self) -> HealthReport:
+        """Report brain readiness (B5), mirroring the body's L3 init checklist.
+
+        Reasoner (their `llm_model`) and memory (their `world_model`) are wired
+        at construction; the skill library (their `task_library`) lands in P2, so
+        `skill_library_ready` is left `None` for now.
+        """
+        return HealthReport(
+            reasoner_ready=self._reasoner is not None,
+            memory_ready=self._mem is not None,
+        )

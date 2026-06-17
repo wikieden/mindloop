@@ -43,11 +43,15 @@ is approved.
 |---|---|---|
 | `Brain.ingest` (remember) | ✅ shipping | `brain.py` |
 | `Brain.ask` (retrieve → reason → cited Answer) | ✅ shipping | `brain.py` |
-| `Reasoner` protocol + Scripted / Verbalizer / CosmosReason | ✅ shipping | `reasoner.py`, `verbalizer.py` |
-| `ExecutorAdapter` protocol + `SubTask` / `StatusUpdate` / `CapabilityManifest` | ✅ shipping | `protocols.py` |
-| `MockBody` reference executor | ✅ shipping | `bodylink` |
+| `Reasoner` / `Verbalizer` protocols + Scripted / Verbalizer / CosmosReason | ✅ shipping | `reason.py`, `verbalizers.py` |
+| `ExecutorAdapter` protocol + `SubTask` / `StatusUpdate` / `CapabilityManifest` + typed `ErrorCode` / `RecoveryHint` | ✅ **P0 done** | `execute.py` |
+| `PreferenceStore` (L5) stub + `HealthReport` (B5) + `Brain.health()` | ✅ **P0 done** | `preference.py`, `health.py`, `brain.py` |
+| `MockBody` reference executor + `bodylink` package | ⬜ **P0 — in progress (Chunk B)** | — |
 
-Everything below is **net-new** L3 capability.
+The executor seam (D1/D3) now exists in `execute.py`: open-vocabulary verbs,
+node-id-carrying `SubTask` (B9), typed `ErrorCode`/`RecoveryHint` (B3), two-tier
+`CapabilityManifest` (D3). What remains for P0 is the `bodylink` package + its
+`MockBody`. Everything below P0 is **net-new** L3 capability.
 
 ---
 
@@ -72,19 +76,29 @@ P0 contracts ─► P1 intent+plan ─► P2 Episteme ─► P3 Phylax ─► P4
 
 ## 3. Phases
 
-### P0 — Seam contracts & test scaffolding  ·  mostly done
+### P0 — Seam contracts & test scaffolding  ·  in progress
 
 **Goal:** freeze the protocols L3 plans against, so phases P1+ are pure brain
 logic.
 
-- ✅ `ExecutorAdapter` + value types (`protocols.py`).
-- ✅ `MockBody` (`bodylink`).
-- ⬜ `PreferenceStore` protocol stub (L5, D2) — interface only, external impl.
-- ⬜ Health-check interface mirroring the body's L3 init checklist (B5).
+- ✅ `ExecutorAdapter` protocol + value types (`SubTask`, `StatusUpdate`,
+  `CapabilityManifest`/`BodyProfile`/`VerbSpec`, `TaskStatus`/`ErrorCode`/
+  `RecoveryKind`/`RecoveryHint`) — `execute.py`. Open-vocab verbs (D3), node-id
+  carry + echo (B9), typed errors/recovery (B3), two-tier manifest (D3).
+- ✅ `PreferenceStore` protocol stub (L5, D2) — `preference.py`, provisional.
+- ✅ `HealthReport` + `Brain.health()` (B5) — `health.py`, `brain.py`.
+- ✅ Contract tests (`tests/test_execute.py`): terminal-status, typed errors,
+  manifest verb-gating, node-id carry/echo, `ExecutorAdapter` runtime-checkable,
+  `Brain.health`. (mindloop: 30 passed, ruff clean, pyright 0.)
+- ⬜ **Chunk B:** create the `bodylink` workspace member (D5, 4th package) +
+  register in root `pyproject.toml`; `MockBody` impl + dispatch round-trip tests.
 
-**B2R ref:** `code_framework.md`, `system_integration.md`.
-**Tests:** MockBody dispatch round-trips; protocol conformance (done).
-**Exit:** all seam protocols frozen; node-id + typed-error contract locked.
+**B2R ref:** `code_framework.md`, `system_integration.md`,
+`embodiment_adaptation.md` (Body Profile tier).
+**Tests:** seam value-type contract (done); MockBody dispatch round-trips
+(Chunk B).
+**Exit:** all seam protocols frozen ✅; `bodylink` builds + installs in the
+workspace (Chunk B); node-id + typed-error contract locked ✅.
 
 ### P1 — Intent routing + planning skeleton  ·  M-L3.1  ·  the S2 spine
 
