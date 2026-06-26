@@ -30,3 +30,11 @@ follow SemVer (pre-1.0, the API may change between minor releases).
   (carried, not brain-enforced — D4). `Brain.handle()` orchestrates
   route → (`ask` | plan → dispatch | chat); `BrainError` in `errors.py`.
   Validated end-to-end against a live Cosmos-Reason2 vLLM endpoint.
+- **`CosmosReasonVerbalizer(extra_body=...)`** — merge arbitrary OpenAI-compatible
+  request fields into every payload, e.g.
+  `{"chat_template_kwargs": {"enable_thinking": False}}` to disable a thinking
+  model's chain-of-thought for clean structured output. The recommended P1
+  wiring is a strong instruction-follower (Qwen3.6, thinking off) for the
+  `Planner`/`IntentRouter` and Cosmos-Reason2 for the physical-reasoning
+  `Reasoner`. The planner prompt now mandates a final `speak` line in the user's
+  language.

@@ -129,8 +129,14 @@ _INTENT_PROMPT = (
 _PLAN_PROMPT = (
     "You are a household robot planner. Output an executable command sequence, "
     "one command per line, as 'verb arg1 arg2'. Use ONLY the verbs listed in the "
-    "context. Refer to objects by their scene names. End with a line "
-    "'speak <short message to the user>'. Output nothing else.\n\n"
+    "context; refer to objects by their scene names. The LAST line MUST be "
+    "'speak <one short sentence telling the user what you will do>' — never omit "
+    "it, and write the speak sentence in the same language as the instruction. "
+    "Output only the command lines, nothing else.\n"
+    "Example:\n"
+    "navigate table\n"
+    "grasp mug\n"
+    "speak Sure, I'll bring you the mug.\n\n"
     "CONTEXT:\n{context}\n\nINSTRUCTION: {instruction}\nCOMMANDS:"
 )
 

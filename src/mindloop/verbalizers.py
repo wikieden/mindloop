@@ -91,6 +91,7 @@ class CosmosReasonVerbalizer:
         timeout_s: float = 60.0,
         max_tokens: int = 1024,
         temperature: float = 0.6,
+        extra_body: dict[str, Any] | None = None,
         transport: Transport | None = None,
     ) -> None:
         self.model = model
@@ -98,6 +99,10 @@ class CosmosReasonVerbalizer:
         self.timeout_s = timeout_s
         self.max_tokens = max_tokens
         self.temperature = temperature
+        # Extra OpenAI-compatible request fields merged into every payload — e.g.
+        # ``{"chat_template_kwargs": {"enable_thinking": False}}`` to turn off a
+        # thinking model's chain-of-thought (Qwen3.x) for clean structured output.
+        self._extra_body = dict(extra_body or {})
         self._api_key = api_key or os.environ.get("NVIDIA_API_KEY")
         self._transport = transport or self._http_post
 
@@ -108,6 +113,7 @@ class CosmosReasonVerbalizer:
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
+            **self._extra_body,
         }
         data = self._transport(payload)
         try:
