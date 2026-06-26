@@ -102,6 +102,15 @@ class SubTask:
     verb: str
     target_node_ids: tuple[int, ...] = ()
     params: dict[str, Any] = field(default_factory=dict)
+    # B2R-MVP-aligned metadata, filled by the deterministic planner compiler
+    # (`plan.compile_commands`). The brain *carries* but does **not** enforce
+    # `preconditions`/`effects` — the symbolic-BT tier in `bodylink` does (D4).
+    # `skill` is the executor-side implementation hint; `timeout_s` bounds the
+    # dispatch. See plan.py and B2R `subtask_compiler.py`.
+    skill: str = ""
+    preconditions: tuple[str, ...] = ()
+    effects: tuple[str, ...] = ()
+    timeout_s: float = 30.0
 
 
 @dataclass(frozen=True, slots=True)

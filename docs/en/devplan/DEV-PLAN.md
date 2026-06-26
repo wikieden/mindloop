@@ -109,9 +109,10 @@ at P0 close; it was a proven dev env earlier at 176 tests).
 **Exit:** all seam protocols frozen ✅; `bodylink` builds + installs ✅; node-id
 + typed-error contract locked ✅.
 
-### P1 — Intent routing + planning skeleton  ·  M-L3.1  ·  the S2 spine
+### P1 — Intent routing + planning skeleton  ·  ✅ DONE (2026-06-26)  ·  M-L3.1
 
-**Goal:** turn `Brain` from a Q&A box into a router + planner.
+**Spec:** [specs/P1-intent-planning.md](specs/P1-intent-planning.md) (B2R-MVP
+two-stage format). **Goal:** turn `Brain` from a Q&A box into a router + planner.
 
 - `IntentRouter` — classify an instruction into `{task, question, chat}`.
 - `Planner` — task intent → a `list[SubTask]` of **skill verbs**; query the
@@ -124,7 +125,10 @@ at P0 close; it was a proven dev env earlier at 176 tests).
 `[navigate, pick]` plan, all slots cited; an unsupported verb → refused, not
 emitted.
 **Exit:** a household instruction produces a verb plan dispatched to MockBody
-with every object slot carrying a node id.
+with every object slot carrying a node id. ✅ Met — `plan.py` + `Brain.handle`;
+8 network-free tests; full suite 197 passed; ruff clean; pyright 0.
+Cross-validated end-to-end against a live Cosmos-Reason2 vLLM endpoint
+(intent routing + LLM verb plan → node-bound dispatch + cited question answer).
 
 ### P2 — Episteme skill-card library  ·  M-L3.2  ·  D3/§5, K2
 

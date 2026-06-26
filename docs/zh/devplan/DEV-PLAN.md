@@ -102,9 +102,10 @@ mindloop + worldsense + bodylink）。RTX PRO 交叉验证待办（P0 收尾时�
 **出口：** 所有缝协议冻结 ✅；`bodylink` build+install ✅；node-id + 类型化
 错误契约锁定 ✅。
 
-### P1 —— 意图路由 + 规划骨架  ·  M-L3.1  ·  S2 脊椎
+### P1 —— 意图路由 + 规划骨架  ·  ✅ 完成（2026-06-26）  ·  M-L3.1
 
-**目标：** 把 `Brain` 从问答盒变成路由器 + 规划器。
+**Spec：** [specs/P1-intent-planning.md](specs/P1-intent-planning.md)（B2R-MVP
+两段式格式）。**目标：** 把 `Brain` 从问答盒变成路由器 + 规划器。
 
 - `IntentRouter` —— 把指令分类为 `{任务, 提问, 闲聊}`。
 - `Planner` —— 任务意图 → **技能动词**的 `list[SubTask]`；查本体的
@@ -116,7 +117,9 @@ mindloop + worldsense + bodylink）。RTX PRO 交叉验证待办（P0 收尾时�
 **测试（ScriptedReasoner + MockBody）：** "拿桌上的瓶子" → `[navigate, pick]`
 计划，所有槽位带引用；不支持的动词 → 拒绝、不下发。
 **出口：** 一条家务指令产出动词计划，下发到 MockBody，每个物体槽位都带
-node id。
+node id。✅ 达成 —— `plan.py` + `Brain.handle`；8 个网络无关测试；全套 197 passed；
+ruff clean；pyright 0。并对真 Cosmos-Reason2 vLLM 端点端到端交叉验证（意图路由 +
+LLM 动词计划 → node 绑定下发 + 带引用问答）。
 
 ### P2 —— Episteme 技能卡库  ·  M-L3.2  ·  D3/§5、K2
 

@@ -13,16 +13,27 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from .errors import BrainError
 from .health import HealthReport
+from .plan import HandleResult, compile_commands
 from .reason import Answer, Reasoner
 
 if TYPE_CHECKING:
     import numpy as np
     from tempomem import Detection, PerceptionAdapter, SpatialMemory
 
+    from .execute import ExecutorAdapter, StatusUpdate
+    from .plan import IntentRouter, Planner
+
 
 class Brain:
-    """Memory + Reasoner cognitive loop."""
+    """Memory + Reasoner cognitive loop.
+
+    `ask` (retrieve → reason) needs only `mem` + `reasoner`. The full S2 loop
+    `handle` (route → plan → dispatch, P1) additionally needs a `router`, a
+    `planner`, and an `executor` (a `bodylink.MockBody` or a real body); without
+    them `handle` raises rather than guessing.
+    """
 
     def __init__(
         self,
@@ -31,11 +42,17 @@ class Brain:
         *,
         adapter: PerceptionAdapter | None = None,
         max_tokens: int = 1500,
+        router: IntentRouter | None = None,
+        planner: Planner | None = None,
+        executor: ExecutorAdapter | None = None,
     ) -> None:
         self._mem = mem
         self._reasoner = reasoner
         self._adapter = adapter
         self._budget = max_tokens
+        self._router = router
+        self._planner = planner
+        self._executor = executor
 
     def observe(
         self,
@@ -79,6 +96,52 @@ class Brain:
         else:
             context = self._mem.serialize(format="prompt", max_tokens=self._budget)
         return self._reasoner.reason(question, context)
+
+    def handle(self, instruction: str, *, k: int = 64) -> HandleResult:
+        """The full S2 loop (P1): route an instruction → answer or plan + dispatch.
+
+        `question`/`chat` route to `ask` (retrieve → reason → cited `Answer`). A
+        `task` is planned into a verb `Command` sequence (B2R two-stage format),
+        compiled into node-bound `SubTask`s gated by the body's manifest (D3/B9),
+        then — if an `executor` is wired — dispatched, returning each subtask's
+        terminal `StatusUpdate`. Raises `BrainError` if the routing/planning
+        collaborators are not configured.
+        """
+        if self._router is None or self._planner is None:
+            raise BrainError("Brain.handle needs router= and planner= (see Brain.__init__)")
+
+        intent = self._router.classify(instruction)
+        if intent in ("question", "chat"):
+            return HandleResult(intent=intent, answer=self.ask(instruction, k=k))
+
+        if self._executor is None:
+            raise BrainError("Brain.handle with a task intent needs executor= (a body)")
+        manifest = self._executor.capabilities()
+        context = self._plan_context(instruction, manifest_verbs=sorted(manifest.verb_names()), k=k)
+        plan = compile_commands(self._planner.plan(instruction, context), self._mem, manifest)
+        statuses = tuple(self._drain(st) for st in plan.subtasks)
+        return HandleResult(intent=intent, plan=plan, statuses=statuses)
+
+    def _plan_context(self, instruction: str, *, manifest_verbs: list[str], k: int) -> str:
+        """Build the planner's context: the relevant scene subgraph + the verb
+        vocabulary the body supports (so the LLM only plans dispatchable verbs)."""
+        hits = self._mem.query(instruction, k=k)
+        node_ids = {n.id for n in hits.nodes}
+        scene = (
+            self._mem.serialize(format="prompt", node_ids=node_ids, max_tokens=self._budget)
+            if node_ids
+            else self._mem.serialize(format="prompt", max_tokens=self._budget)
+        )
+        return f"Available verbs: {', '.join(manifest_verbs)}\n\nSCENE:\n{scene}"
+
+    def _drain(self, subtask: Any) -> StatusUpdate:
+        """Consume a dispatch `StatusUpdate` stream to its terminal element."""
+        last: StatusUpdate | None = None
+        for update in self._executor.dispatch(subtask):  # type: ignore[union-attr]
+            last = update
+        if last is None:
+            raise BrainError(f"executor yielded no StatusUpdate for subtask {subtask.id!r}")
+        return last
 
     def health(self) -> HealthReport:
         """Report brain readiness (B5), mirroring the body's L3 init checklist.
