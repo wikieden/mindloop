@@ -45,6 +45,7 @@ class Brain:
         router: IntentRouter | None = None,
         planner: Planner | None = None,
         executor: ExecutorAdapter | None = None,
+        default_speak: str = "OK.",
     ) -> None:
         self._mem = mem
         self._reasoner = reasoner
@@ -53,6 +54,10 @@ class Brain:
         self._router = router
         self._planner = planner
         self._executor = executor
+        # Floor utterance when a task plan dispatches but the planner LLM omitted
+        # a `speak` line — guarantees user feedback even with a weak instruction
+        # follower. Override to localize (e.g. "好的。").
+        self._default_speak = default_speak
 
     def observe(
         self,
@@ -118,7 +123,12 @@ class Brain:
             raise BrainError("Brain.handle with a task intent needs executor= (a body)")
         manifest = self._executor.capabilities()
         context = self._plan_context(instruction, manifest_verbs=sorted(manifest.verb_names()), k=k)
-        plan = compile_commands(self._planner.plan(instruction, context), self._mem, manifest)
+        plan = compile_commands(
+            self._planner.plan(instruction, context),
+            self._mem,
+            manifest,
+            default_speak=self._default_speak,
+        )
         statuses = tuple(self._drain(st) for st in plan.subtasks)
         return HandleResult(intent=intent, plan=plan, statuses=statuses)
 

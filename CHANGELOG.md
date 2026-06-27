@@ -38,3 +38,8 @@ follow SemVer (pre-1.0, the API may change between minor releases).
   `Planner`/`IntentRouter` and Cosmos-Reason2 for the physical-reasoning
   `Reasoner`. The planner prompt now mandates a final `speak` line in the user's
   language.
+- **`Brain(default_speak=...)` + `compile_commands(default_speak=)`** — a floor
+  utterance used when a dispatched task plan has no `speak` line (the LLM omitted
+  it). Guarantees user feedback even with a weak instruction follower, so the
+  single-model (Cosmos-only) wiring is robust too. Default `"OK."`; override to
+  localize.

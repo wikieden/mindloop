@@ -130,6 +130,30 @@ def test_parse_commands_text_format() -> None:
     assert cmds[2].args == ("here you go",)
 
 
+def test_speak_fallback_when_planner_omits_it(mem: SpatialMemory) -> None:
+    # a planner (weak instruction follower) emits no speak line -> Brain's
+    # default_speak floor fills it so a dispatched task still acknowledges
+    planner = ScriptedPlanner({"go": (Command("grasp", ("bottle",)),)})
+    brain = Brain(
+        mem,
+        ScriptedReasoner(),
+        router=ScriptedIntentRouter(default="task"),
+        planner=planner,
+        executor=MockBody(),
+        default_speak="好的。",
+    )
+    r = brain.handle("go")
+    assert r.plan.speak == "好的。"
+    # but an explicit speak line is preserved, not overridden
+    plan = compile_commands(
+        (Command("grasp", ("bottle",)), Command("speak", ("here",))),
+        mem,
+        MockBody().capabilities(),
+        default_speak="好的。",
+    )
+    assert plan.speak == "here"
+
+
 def test_handle_without_collaborators_raises(mem: SpatialMemory) -> None:
     brain = Brain(mem, ScriptedReasoner())
     with pytest.raises(BrainError):

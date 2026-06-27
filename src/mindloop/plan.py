@@ -241,6 +241,8 @@ def compile_commands(
     commands: tuple[Command, ...],
     mem: SpatialMemory,
     manifest: CapabilityManifest,
+    *,
+    default_speak: str = "",
 ) -> Plan:
     """Compile a verb `Command` sequence into a `Plan` (the B2R compile stage).
 
@@ -248,6 +250,10 @@ def compile_commands(
     `Plan.speak`; a verb the body does not declare is **dropped** (D3, logged); an
     accepted verb becomes a `SubTask` with per-verb metadata filled and each
     object arg bound to a node id via `mem.query` (B9).
+
+    `default_speak` is the floor utterance: if the plan has subtasks but the LLM
+    omitted a `speak` line (weaker instruction-followers like Cosmos-Reason2 do),
+    it is used so a dispatched task always has a user-facing acknowledgement.
     """
     supported = manifest.verb_names()
     batch = uuid.uuid4().hex[:8]
@@ -284,4 +290,7 @@ def compile_commands(
             )
         )
 
-    return Plan(subtasks=tuple(subtasks), speak=" ".join(speak_parts))
+    speak = " ".join(speak_parts)
+    if subtasks and not speak:
+        speak = default_speak
+    return Plan(subtasks=tuple(subtasks), speak=speak)
