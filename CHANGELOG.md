@@ -8,6 +8,20 @@ follow SemVer (pre-1.0, the API may change between minor releases).
 
 ### Added
 
+- **Phylax policy tier (P3, M-L3.2, D4 top tier)** — `phylax.py`: the brain-side
+  **semantic** safety tier (the symbolic-BT + reflex tiers are deferred). A
+  declarative `Policy` (adult-only verbs, supervised-only verbs, forbidden node
+  ids, human-proximity speed cap, trusted card provenances) vetted against a
+  `SafetyContext` (role/proximity/supervision, conservative defaults) by
+  `Phylax.check(plan, context) -> tuple[Violation, ...]`. `Brain(policy=…)` runs
+  the gate in `handle()` **between** the manifest-gated compile (D3) and dispatch:
+  any violation **blocks the whole plan** — stop + speak, no reroute, no retry
+  (D4 §9: "an upper layer's want-to never overrides a lower layer's must-not") —
+  and `HandleResult` gains `violations` + `blocked`, with `plan.speak` replaced by
+  a refusal and nothing dispatched. Opt-in: no `policy` ⇒ P1/P2 dispatch unchanged.
+  `SkillCardPlanner(policy=…)` calls `Phylax.vet_card` to **refuse a `safety:`
+  card from an untrusted provenance** before it is honored. Ports Brain2Robot
+  `safety_architecture.md` §2/§8/§9. See docs/devplan/specs/P3-phylax-policy.md.
 - **Episteme skill-card library (P2, M-L3.2, D3/K2)** — `episteme.py`: procedural
   knowledge as data. A `SkillCard` is **flat steps + rules** (K2; a DAG is
   reserved via `schema_version`) — `id`/`category`/`preconditions`/`rules`/

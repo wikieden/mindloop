@@ -347,6 +347,7 @@ class SkillCardPlanner:
         encoder: Any | None = None,
         preferences: Mapping[str, Any] | None = None,
         slot_extractor: Any | None = None,
+        policy: Any | None = None,
     ) -> None:
         self._lib = library
         self._manifest = manifest
@@ -354,10 +355,13 @@ class SkillCardPlanner:
         self._encoder = encoder
         self._prefs = dict(preferences or {})
         self._extract = slot_extractor or extract_slots
+        # Optional Phylax: vets a card before it is honored — a card carrying
+        # `safety:` annotations from an untrusted provenance is refused (P3).
+        self._policy = policy
 
     def plan(self, instruction: str, context: str) -> tuple[Command, ...]:
         hits = self._lib.retrieve(instruction, encoder=self._encoder, k=1)
-        if hits:
+        if hits and (self._policy is None or self._policy.vet_card(hits[0])):
             card = hits[0]
             slots = self._extract(instruction, card)
             commands = instantiate(card, self._manifest, slots=slots, preferences=self._prefs)

@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from tempomem import SpatialMemory, Verbalizer
 
     from .execute import CapabilityManifest
+    from .phylax import Violation
 
 _log = logging.getLogger("mindloop.plan")
 
@@ -74,6 +75,14 @@ class HandleResult:
     answer: Answer | None = None
     plan: Plan | None = None
     statuses: tuple[StatusUpdate, ...] = ()
+    # Non-empty when the Phylax safety gate (P3) blocked the plan: it was refused,
+    # not dispatched (`statuses` is empty), and `plan.speak` carries the refusal.
+    violations: tuple[Violation, ...] = ()
+
+    @property
+    def blocked(self) -> bool:
+        """True if the plan was refused by the safety gate (and not dispatched)."""
+        return bool(self.violations)
 
 
 # --------------------------------------------------------------------------- #

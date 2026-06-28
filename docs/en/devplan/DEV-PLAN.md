@@ -149,7 +149,9 @@ Cross-validated end-to-end against a live Cosmos-Reason2 vLLM endpoint
 resolve to correct program; missing card falls back flagged.
 **Exit:** laundry + cooking cards run end-to-end against MockBody.
 
-### P3 — Phylax policy tier  ·  M-L3.2  ·  D4 top tier (semantic)
+### P3 — Phylax policy tier  ·  M-L3.2  ·  D4 top tier (semantic)  ·  ✅ DONE
+
+**Done (2026-06-28):** `phylax.py` — see [specs/P3-phylax-policy.md](specs/P3-phylax-policy.md).
 
 **Goal:** the portable, brain-side safety tier (the other two Phylax tiers —
 symbolic-BT in `bodylink`, reflex in firmware — are deferred).

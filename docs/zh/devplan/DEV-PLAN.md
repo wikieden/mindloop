@@ -139,7 +139,9 @@ LLM 动词计划 → node 绑定下发 + 带引用问答）。
 程序；缺卡兜底标记。
 **出口：** 洗衣 + 做菜卡对 MockBody 端到端跑通。
 
-### P3 —— Phylax 策略层  ·  M-L3.2  ·  D4 顶层（语义）
+### P3 —— Phylax 策略层  ·  M-L3.2  ·  D4 顶层（语义）  ·  ✅ DONE
+
+**已完成（2026-06-28）：** `phylax.py` —— 见 [specs/P3-phylax-policy.md](specs/P3-phylax-policy.md)。
 
 **目标：** 可移植的大脑侧安全层（另两层 Phylax —— `bodylink` 的符号 BT、
 固件的反射 —— 暂缓）。

@@ -11,10 +11,12 @@ connection). Active perception (LLM → re-look) is future work.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from .errors import BrainError
 from .health import HealthReport
+from .phylax import refusal_speak
 from .plan import HandleResult, compile_commands
 from .reason import Answer, Reasoner
 
@@ -23,6 +25,7 @@ if TYPE_CHECKING:
     from tempomem import Detection, PerceptionAdapter, SpatialMemory
 
     from .execute import ExecutorAdapter, StatusUpdate
+    from .phylax import Phylax, SafetyContext
     from .plan import IntentRouter, Planner
 
 
@@ -45,6 +48,7 @@ class Brain:
         router: IntentRouter | None = None,
         planner: Planner | None = None,
         executor: ExecutorAdapter | None = None,
+        policy: Phylax | None = None,
         default_speak: str = "OK.",
     ) -> None:
         self._mem = mem
@@ -54,6 +58,10 @@ class Brain:
         self._router = router
         self._planner = planner
         self._executor = executor
+        # Optional brain-side semantic safety tier (P3, D4). When wired, every
+        # task plan is vetted before dispatch; a violation blocks the whole plan
+        # (stop + speak, no reroute). None ⇒ no gate (dispatch as in P1/P2).
+        self._policy = policy
         # Floor utterance when a task plan dispatches but the planner LLM omitted
         # a `speak` line — guarantees user feedback even with a weak instruction
         # follower. Override to localize (e.g. "好的。").
@@ -102,15 +110,24 @@ class Brain:
             context = self._mem.serialize(format="prompt", max_tokens=self._budget)
         return self._reasoner.reason(question, context)
 
-    def handle(self, instruction: str, *, k: int = 64) -> HandleResult:
-        """The full S2 loop (P1): route an instruction → answer or plan + dispatch.
+    def handle(
+        self,
+        instruction: str,
+        *,
+        k: int = 64,
+        safety_context: SafetyContext | None = None,
+    ) -> HandleResult:
+        """The full S2 loop (P1+P3): route an instruction → answer or plan + dispatch.
 
         `question`/`chat` route to `ask` (retrieve → reason → cited `Answer`). A
         `task` is planned into a verb `Command` sequence (B2R two-stage format),
-        compiled into node-bound `SubTask`s gated by the body's manifest (D3/B9),
-        then — if an `executor` is wired — dispatched, returning each subtask's
-        terminal `StatusUpdate`. Raises `BrainError` if the routing/planning
-        collaborators are not configured.
+        compiled into node-bound `SubTask`s gated by the body's manifest (D3/B9).
+        If a `policy` (Phylax) is wired, the compiled plan is then vetted against
+        `safety_context` **before** dispatch (P3): any violation **blocks the whole
+        plan** — stop + speak, no reroute, no retry (D4 §9) — and the result
+        carries the `violations` with nothing dispatched. A cleared plan is
+        dispatched, returning each subtask's terminal `StatusUpdate`. Raises
+        `BrainError` if the routing/planning collaborators are not configured.
         """
         if self._router is None or self._planner is None:
             raise BrainError("Brain.handle needs router= and planner= (see Brain.__init__)")
@@ -129,6 +146,15 @@ class Brain:
             manifest,
             default_speak=self._default_speak,
         )
+
+        if self._policy is not None:
+            violations = self._policy.check(plan, safety_context)
+            if violations:
+                # Safety-class block (D4 §9): refuse the whole plan, speak why, and
+                # dispatch nothing. The lower must-not overrides the upper want-to.
+                blocked = replace(plan, speak=refusal_speak(violations))
+                return HandleResult(intent=intent, plan=blocked, violations=violations)
+
         statuses = tuple(self._drain(st) for st in plan.subtasks)
         return HandleResult(intent=intent, plan=plan, statuses=statuses)
 
