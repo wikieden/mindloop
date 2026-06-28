@@ -71,6 +71,7 @@ from .scene_context import DefaultSceneContextProvider, Focus, SceneContextProvi
 from .trace import TraceRecord, TraceStore
 from .verbalizers import CosmosReasonVerbalizer, FailoverVerbalizer, strip_reasoning
 from .voice import Listener, MockListener, MockSpeaker, Speaker, VoiceLoop, reply_text
+from .world_state import Effect, EffectApplier, WorldState, parse_effect
 
 __version__ = "0.1.0a0"
 
@@ -86,6 +87,8 @@ __all__ = [
     "CosmosReasonVerbalizer",
     "DefaultSceneContextProvider",
     "DictPreferenceStore",
+    "Effect",
+    "EffectApplier",
     "ErrorCode",
     "EvalCase",
     "EvalReport",
@@ -136,12 +139,14 @@ __all__ = [
     "VerbalizerReasoner",
     "Violation",
     "VoiceLoop",
+    "WorldState",
     "citation_compliance",
     "compile_commands",
     "extract_slots",
     "instantiate",
     "load_cards",
     "parse_commands",
+    "parse_effect",
     "refusal_speak",
     "reply_text",
     "run_eval",

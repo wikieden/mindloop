@@ -175,8 +175,11 @@ Then turn each on behind a flag.
 1. **Factor** `SceneContextProvider` out of `ask`/`_plan_context` — no behavior
    change, just a seam + a `version`. **✅ done (2026-06-28)** — `scene_context.py`;
    `Brain(context_provider=…)`, version bumps on `observe`/`ingest`.
-2. **Effect write-back** — apply confirmed `effects` to the map on SUCCESS; re-vet
-   the plan tail's preconditions against the updated map.
+2. **Effect write-back** — apply confirmed `effects` on SUCCESS. **✅ done
+   (2026-06-28)** — `world_state.py`: a symbolic `WorldState` overlay (mindloop, no
+   tempomem-core change) holds `predicate=value` facts from completed actions,
+   injected as a `WORLD STATE` block into the context. Precondition re-vet of the
+   plan tail against it is the next refinement.
 3. **Version-gated re-serialize** — re-query fresh context on replan + on a
    focus-touching `v#` bump.
 4. **Active perception** — an `observe` hook between steps / on uncertainty; the

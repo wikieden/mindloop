@@ -23,6 +23,7 @@ from .plan import HandleResult, Plan, compile_commands
 from .reason import Answer, Reasoner
 from .replan import ReplanAction
 from .scene_context import DefaultSceneContextProvider, Focus
+from .world_state import WorldState
 
 if TYPE_CHECKING:
     import numpy as np
@@ -61,6 +62,7 @@ class Brain:
         trace: TraceStore | None = None,
         preferences: PreferenceStore | None = None,
         context_provider: SceneContextProvider | None = None,
+        world_state: WorldState | None = None,
         default_speak: str = "OK.",
     ) -> None:
         self._mem = mem
@@ -70,6 +72,10 @@ class Brain:
         # The read-path seam (dynamic-scene P1): builds the serialized scene context
         # for a Focus + a map version. Default wraps today's query+serialize exactly.
         self._ctx = context_provider or DefaultSceneContextProvider(mem, default_budget=max_tokens)
+        # Symbolic effect write-back overlay (dynamic-scene P2): facts the brain
+        # knows from completed actions, injected into context so a multi-step task
+        # stays grounded without re-perceiving every step.
+        self._world = world_state or WorldState()
         self._router = router
         self._planner = planner
         self._executor = executor
@@ -123,6 +129,11 @@ class Brain:
         if callable(bump):
             bump()
 
+    @property
+    def world(self) -> WorldState:
+        """The symbolic world-state overlay (dynamic-scene P2) — facts from actions."""
+        return self._world
+
     def ask(self, question: str, *, k: int = 64, dialogue: str = "") -> Answer:
         """Retrieve a query-relevant subgraph → reason → answer.
 
@@ -137,10 +148,21 @@ class Brain:
         `dialogue` (P5) is recent conversation history; when given it is prepended
         to the reasoner context so a follow-up resolves against prior turns.
         """
-        context, _ = self._ctx.context(Focus(query=question), k=k, max_tokens=self._budget)
-        if dialogue:
-            context = f"CONVERSATION (recent turns):\n{dialogue}\n\n{context}"
+        scene, _ = self._ctx.context(Focus(query=question), k=k, max_tokens=self._budget)
+        context = self._assemble_context(scene, dialogue=dialogue)
         return self._reasoner.reason(question, context)
+
+    def _assemble_context(self, scene: str, *, dialogue: str = "") -> str:
+        """Stack the recent dialogue (P5), the symbolic world-state (P2), and the
+        serialized scene subgraph into one context block."""
+        blocks: list[str] = []
+        if dialogue:
+            blocks.append(f"CONVERSATION (recent turns):\n{dialogue}")
+        world = self._world.render()
+        if world:
+            blocks.append(world)
+        blocks.append(scene)
+        return "\n\n".join(blocks)
 
     def converse(
         self,
@@ -301,12 +323,18 @@ class Brain:
     def _record(self, sub: SubTask, st: StatusUpdate, session: str) -> None:
         if self._trace is not None:
             self._trace.log_attempt(sub, st, session_id=session)
+        # Effect write-back (dynamic-scene P2): a confirmed success updates the
+        # symbolic world-state, so the next step's context reflects this action's
+        # result without re-perceiving.
+        if st.status.value == "success":
+            self._world.apply(sub.effects)
 
     def _plan_context(self, instruction: str, *, manifest_verbs: list[str], k: int) -> str:
         """Build the planner's context: the relevant scene subgraph + the verb
         vocabulary the body supports (so the LLM only plans dispatchable verbs)."""
         scene, _ = self._ctx.context(Focus(query=instruction), k=k, max_tokens=self._budget)
-        return f"Available verbs: {', '.join(manifest_verbs)}\n\nSCENE:\n{scene}"
+        grounded = self._assemble_context(scene)
+        return f"Available verbs: {', '.join(manifest_verbs)}\n\nSCENE:\n{grounded}"
 
     def _drain(self, subtask: Any) -> StatusUpdate:
         """Consume a dispatch `StatusUpdate` stream to its terminal element."""

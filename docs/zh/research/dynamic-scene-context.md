@@ -158,7 +158,9 @@ class ActivePerception(Protocol):
 1. **抽出** `SceneContextProvider`（从 `ask`/`_plan_context`）—— 行为不变，只多 seam + `version`。
    **✅ 已完成（2026-06-28）** —— `scene_context.py`；`Brain(context_provider=…)`，
    `observe`/`ingest` 时 version ++。
-2. **效果回写** —— SUCCESS 时把确认的 `effects` 应用到地图；对更新后的地图复检 plan 尾部前置条件。
+2. **效果回写** —— SUCCESS 时应用确认的 `effects`。**✅ 已完成（2026-06-28）** ——
+   `world_state.py`：符号 `WorldState` 叠加层（mindloop，不动 tempomem 核心）存完成动作的
+   `predicate=value` 事实，作 `WORLD STATE` 块注入 context。对其复检 plan 尾部前置条件是下一步细化。
 3. **版本门控重 serialize** —— 重规划时 + focus 触及的 `v#` 变化时重查新 context。
 4. **主动感知** —— 步间/不确定时的 `observe` 钩子；reasoner 可请求重看。
 

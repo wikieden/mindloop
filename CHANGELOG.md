@@ -8,6 +8,18 @@ follow SemVer (pre-1.0, the API may change between minor releases).
 
 ### Added
 
+- **Effect write-back / `WorldState` overlay (dynamic-scene, phase 2)** —
+  `world_state.py`: a fast symbolic `predicate → value` layer on top of the
+  perceptual map. When a `SubTask` succeeds, its `effects` (`robot.holding=apple`,
+  `fridge.status=open`) are written to `Brain.world` and injected into the next
+  inference context (`WORLD STATE` block), so a multi-step task stays grounded
+  **without re-perceiving every step** — the cheap half of the dynamic-scene loop.
+  Closes D4's carried-but-unapplied effects into a symbolic loop **without a
+  tempomem-core change** (two layers: tempomem = slow perceptual truth, `WorldState`
+  = fast prediction; active perception reconciles them later). `apply` bumps a
+  version only on change; `reset` for a new task. `Brain(world_state=…)` opt-in,
+  default auto-wired; written back at the single `_record` point (covers dispatch +
+  replan). See docs/research/dynamic-scene-context.md §2a.
 - **`SceneContextProvider` seam (dynamic-scene, phase 1)** — `scene_context.py`:
   factors the read path (`query` → `serialize`) out of `Brain.ask` /
   `Brain._plan_context` into a seam — `context(Focus, *, k, max_tokens) -> (text,
