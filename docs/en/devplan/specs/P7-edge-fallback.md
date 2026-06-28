@@ -127,7 +127,7 @@ The on-body model is weaker; offline mode tightens accordingly:
 
 | Step | Deliverable |
 |---|---|
-| P7.1 | `FailoverVerbalizer` + `ConnectivityMonitor` (LLM failover; network-free tests) |
+| P7.1 ✅ | `FailoverVerbalizer` (LLM failover with call-based hysteresis; network-free tests) — done 2026-06-28. `ConnectivityMonitor` folded into the wrapper's cooldown for now |
 | P7.2 | `Listener` / `Speaker` protocols + `Mock*` + the voice loop |
 | P7.3 | reference on-body engines wired (edge server + ASR + TTS), validated on hardware |
 | P7.4 | degradation contract + mode telemetry + "offline" UX |

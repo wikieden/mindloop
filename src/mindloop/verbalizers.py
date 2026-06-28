@@ -24,14 +24,20 @@ targets Cosmos Reason 1/2 or the Cosmos 3 Reasoner NIM.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import urllib.error
 import urllib.request
-from collections.abc import Callable
-from typing import Any
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Any
 
 from tempomem import QueryError
+
+if TYPE_CHECKING:
+    from tempomem import Verbalizer
+
+_log = logging.getLogger("mindloop.verbalizers")
 
 # NVIDIA-hosted, OpenAI-compatible NIM gateway (build.nvidia.com).
 DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1"
@@ -146,3 +152,87 @@ class CosmosReasonVerbalizer:
             # (e.g. an HTML error page from a reverse proxy) — both must surface
             # as QueryError, never a raw ValueError, per the answer() contract.
             raise QueryError(f"Cosmos NIM request failed: {e}") from e
+
+
+# A callback fired when the serving backend changes: (old_index, new_index, reason).
+SwitchHook = Callable[[int, int, str], None]
+
+
+class FailoverVerbalizer:
+    """A `Verbalizer` that fails over from a primary backend to on-body fallbacks (P7).
+
+    Wraps an ordered list of `Verbalizer`s: ``backends[0]`` is the primary (e.g. a
+    remote `CosmosReasonVerbalizer`), the rest are fallbacks (e.g. an on-body LLM at
+    ``http://localhost:.../v1``). `complete` tries them in order and returns the
+    first success; a backend that raises `QueryError` (a transport failure — the
+    network down, the server unreachable) is skipped to the next.
+
+    **Hysteresis** (so a flapping link does not thrash): when the primary fails, it
+    is put on a `cooldown` of N subsequent calls during which it is tried **last**
+    (fallbacks served first) — not skipped entirely, so it is still the last-resort
+    if every fallback is also down. A primary success clears the cooldown. The
+    counter is call-based (deterministic, no wall-clock) so it is fully testable.
+
+    Reuses the `Verbalizer` seam, so wrapping the reasoner/planner verbalizer makes
+    the whole LLM path failover-capable with **no brain change**. `mode` /
+    `active_index` expose which backend is serving (telemetry); `on_switch` fires on
+    a change.
+    """
+
+    def __init__(
+        self,
+        backends: Sequence[Verbalizer],
+        *,
+        cooldown: int = 8,
+        on_switch: SwitchHook | None = None,
+    ) -> None:
+        if not backends:
+            raise ValueError("FailoverVerbalizer needs at least one backend")
+        self._backends = list(backends)
+        self._cooldown = max(0, cooldown)
+        self._on_switch = on_switch
+        self._skip_primary_for = 0  # calls remaining to demote the primary
+        self._active = 0  # index currently serving (telemetry)
+
+    @property
+    def active_index(self) -> int:
+        """Index of the backend that served the last `complete` (0 = primary)."""
+        return self._active
+
+    @property
+    def mode(self) -> str:
+        """``"primary"`` when the primary is serving, else ``"fallback"``."""
+        return "primary" if self._active == 0 else "fallback"
+
+    def _order(self) -> list[int]:
+        """The backend indices to try this call (primary demoted while cooling)."""
+        n = len(self._backends)
+        if self._skip_primary_for > 0:
+            self._skip_primary_for -= 1
+            return [*range(1, n), 0]  # fallbacks first, primary last-resort
+        return list(range(n))
+
+    def _note_active(self, idx: int, reason: str) -> None:
+        if idx != self._active and self._on_switch is not None:
+            self._on_switch(self._active, idx, reason)
+        self._active = idx
+
+    def complete(self, prompt: str) -> str:
+        """Return the first backend's completion; fail over on `QueryError`."""
+        last_err: QueryError | None = None
+        for idx in self._order():
+            try:
+                out = self._backends[idx].complete(prompt)
+            except QueryError as e:
+                last_err = e
+                _log.warning("verbalizer backend %d failed, failing over: %s", idx, e)
+                if idx == 0:
+                    self._skip_primary_for = self._cooldown  # demote the primary
+                continue
+            if idx == 0:
+                self._skip_primary_for = 0  # primary healthy again
+            self._note_active(idx, "recovered" if idx == 0 else "failover")
+            return out
+        raise QueryError(
+            f"all {len(self._backends)} verbalizer backends failed; last error: {last_err}"
+        )

@@ -8,6 +8,18 @@ follow SemVer (pre-1.0, the API may change between minor releases).
 
 ### Added
 
+- **`FailoverVerbalizer` (P7.1, edge fallback)** — a `Verbalizer` that fails over
+  from a primary backend to on-body fallbacks: `complete` tries an ordered list of
+  `Verbalizer`s and returns the first success; a backend raising `QueryError` (a
+  transport failure — network down / server unreachable) is skipped to the next.
+  The on-body LLM is just another `CosmosReasonVerbalizer(base_url=localhost)`, so
+  this reuses the seam — wrapping the reasoner/planner verbalizer makes the whole
+  LLM path failover-capable with **no brain change**. Call-based **hysteresis**
+  (deterministic, no wall-clock): a failed primary is demoted to last-resort for a
+  `cooldown` of N calls so a flapping link doesn't thrash, then retried; a primary
+  success clears it. `mode`/`active_index` expose which backend serves (telemetry),
+  `on_switch` fires on a change. First step of P7 (offline AI chain);
+  see docs/devplan/specs/P7-edge-fallback.md.
 - **Phylax policy tier (P3, M-L3.2, D4 top tier)** — `phylax.py`: the brain-side
   **semantic** safety tier (the symbolic-BT + reflex tiers are deferred). A
   declarative `Policy` (adult-only verbs, supervised-only verbs, forbidden node

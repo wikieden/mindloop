@@ -58,7 +58,7 @@ from .plan import (
 )
 from .preference import PreferenceStore
 from .reason import Answer, Reasoner, ScriptedReasoner, ToolCall, VerbalizerReasoner
-from .verbalizers import CosmosReasonVerbalizer, strip_reasoning
+from .verbalizers import CosmosReasonVerbalizer, FailoverVerbalizer, strip_reasoning
 
 __version__ = "0.1.0a0"
 
@@ -73,6 +73,7 @@ __all__ = [
     "CosmosReasonVerbalizer",
     "ErrorCode",
     "ExecutorAdapter",
+    "FailoverVerbalizer",
     "HandleResult",
     "HealthReport",
     "IntentRouter",
