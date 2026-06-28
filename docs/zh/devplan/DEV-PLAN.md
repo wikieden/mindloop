@@ -2,265 +2,227 @@
 
 # mindloop L3 大脑 —— 开发计划
 
-**范围：** 把 L3 认知大脑（`mindloop`）从今天的问答回路，建设成已拍板决策
-所描述的完整 S2 编排器。**L1/L2（执行、真机）暂缓 —— 其设计复用 Brain2Robot
-既有的 L2/L1 工作**（owner，2026-06-15）。`bodylink` 的 `MockBody` 在整个 L3
-开发期充当机身替身。
+**范围：** 把 L3 认知大脑（`mindloop`）从问答回路，建成已拍板决策描述的完整 S2 编排器。
+**L1/L2（执行、真机）暂缓 —— 其设计复用 Brain2Robot 既有 L2/L1 工作**（owner，2026-06-15）。
+`bodylink` 的 `MockBody`（现还有 Genesis 仿真 backend）在整个 L3 开发中代替本体。
 
-**依据：** 决策 D1–D5 + K1–K3（brain-architecture.md §9，2026-06-15 拍板）
-与本体契约 B1–B10（§11，2026-06-11 拍板）。每个阶段**先查对应的 Brain2Robot
-设计文档**（常驻指令 —— B2R 是原型产品）。
+**依据：** 决策 D1–D5 + K1–K3（brain-architecture.md §9，2026-06-15 拍板）与本体契约
+B1–B10（§11，2026-06-11 拍板）。每阶段**先参考对应 Brain2Robot 设计文档**（长期指令 ——
+B2R 是原型产品）。
 
-**状态：** 计划 v1，2026-06-15。每个阶段的 spec 获批前不写代码。
-
----
-
-## 0. 原则（适用每个阶段）
-
-- **只做 L3。** mindloop 拥有 S2（意图 → 规划 → 重规划 → 对话）+ Phylax 策略层
-  + 协议缝。执行、符号 BT 安全、真机都不进（D1）—— 复用 B2R / 留给 `bodylink`。
-- **大脑核心维持 stdlib-only。** 重依赖（LLM 客户端、编码器）藏在 extra 或外部
-  端点后。与今天同契约。
-- **网络无关测试。** 每个阶段对 `ScriptedReasoner` + `MockBody` + hash 编码器
-  测试 —— 绝不用真 LLM 或模型下载。
-- **接地 + 可审计。** 计划把物体槽位绑到场景图 node id；回答引用 node id；
-  每个决定落 L4 痕迹。像素 → 执行器审计链不断（B9）。
-- **先查 B2R。** 每个阶段标明它移植的 B2R 文档；除非被已拍板决策明确取代，
-  否则收编其机制。
-- **双语文档、Conventional Commits、每次改动更 CHANGELOG、CI 矩阵、
-  ruff + pyright 门** —— 与 tempomem core 同一工程标准。
+**状态（2026-06-28 更新）：** P0–P4 已发 + P7.1 已发。**M-L3.1 ✅、M-L3.2 ✅、M-L3.3 半
+（P4 ✅，P5 下一个）。** 每阶段先写 spec、验证后才算 done。大脑测试套：81 个网络隔离测试，
+ruff 清，pyright 0。
 
 ---
 
-## 1. 现状（基线）
+## 0. 原则（每阶段适用）
+
+- **只 L3。** mindloop 拥有 S2（意图→规划→重规划→对话）+ Phylax 策略层 + 协议 seam。执行、
+  符号-BT 安全、真机不归（D1）—— 复用 B2R / 交 `bodylink`。
+- **大脑核心仅 stdlib。** 重依赖（LLM 客户端、encoder）放 extra 或外部端点后。
+- **测试无网络。** 每阶段对 `ScriptedReasoner` + `MockBody` + hash encoder + 注入 fake 测 ——
+  绝不真 LLM 或模型下载。
+- **接地 + 审计。** 计划绑对象槽位到场景图 node id；答案引用 node id；每次派发入 L4 痕迹。
+  审计链不断（B9）。
+- **先参考 B2R。** 每阶段标注所移植 B2R 文档。
+- **双语文档、Conventional Commits、每改动 CHANGELOG、ruff + pyright 闸** —— 同 tempomem 核标准。
+
+---
+
+## 1. 当前状态
+
+**大脑脊柱已贯通至 P4。** `Brain.handle` 跑 route → plan → compile（D3 门控）→ policy（P3 门控）
+→ dispatch → 有界重规划（P4），每步入痕迹。
 
 | 能力 | 状态 | 位置 |
 |---|---|---|
-| `Brain.ingest`（记忆） | ✅ 已交付 | `brain.py` |
-| `Brain.ask`（检索 → 推理 → 带引用 Answer） | ✅ 已交付 | `brain.py` |
-| `Reasoner` / `Verbalizer` 协议 + Scripted / Verbalizer / CosmosReason | ✅ 已交付 | `reason.py`、`verbalizers.py` |
-| `ExecutorAdapter` 协议 + `SubTask` / `StatusUpdate` / `CapabilityManifest` + 类型化 `ErrorCode` / `RecoveryHint` | ✅ **P0 完成** | `execute.py` |
-| `PreferenceStore`（L5）占位 + `HealthReport`（B5）+ `Brain.health()` | ✅ **P0 完成** | `preference.py`、`health.py`、`brain.py` |
-| `MockBody` 参考执行器 + `bodylink` 包 | ✅ **P0 完成** | `bodylink/` |
+| `Brain.ingest` / `Brain.ask`（带引用 Answer） | ✅ | `brain.py` |
+| `Reasoner`/`Verbalizer` 协议 + Scripted/Verbalizer/CosmosReason + **`FailoverVerbalizer`** | ✅ | `reason.py`, `verbalizers.py` |
+| 执行器 seam：`SubTask`/`StatusUpdate`/`CapabilityManifest` + 类型 `ErrorCode`/`RecoveryHint` | ✅ P0 | `execute.py` |
+| 意图路由 + 两段式规划（LLM 动词 → 规则编译） | ✅ **P1 / M-L3.1** | `plan.py` |
+| Episteme 技能卡库 | ✅ **P2** | `episteme.py` |
+| Phylax 语义策略层 | ✅ **P3** | `phylax.py` |
+| L4 痕迹 + 有界重规划 | ✅ **P4** | `trace.py`, `replan.py` |
+| Reasoner/planner LLM failover（离线 AI 链路第 1 步） | ✅ **P7.1** | `verbalizers.py` |
 
-P0 完成：执行缝（D1/D3）落在 `execute.py`（开放词汇动词、带 node id 的
-`SubTask`（B9）、类型化 `ErrorCode`/`RecoveryHint`（B3）、双层
-`CapabilityManifest`（D3）），`bodylink` 成员发布 `MockBody` 来填它。P0 以下
-全部是**全新** L3 能力 —— **下一步 P1**。
+**下一个：** **P5**（对话 + 完整 S2 回路 —— 复现 B2R 端到端场景）。
+
+> **并行 D3 本体适配轨**（在 `bodylink`，不在本大脑计划）：多机型 manifest 目录
+> （g1d/h1/gr1/arm6）、`BaseExecutorAdapter` SDK、一致性套件、Genesis 物理仿真 backend
+> （主机 + mac 验证）全已发。真硬件 adapter + 符号-BT/反射 Phylax 层待做。见
+> [TECH-DESIGN](../../../../docs/zh/TECH-DESIGN.md) 与
+> [bodylink 多机型设计](../../../../bodylink/docs/zh/multi-model-adaptation-design.md)。
 
 ---
 
 ## 2. 阶段图
 
 ```
-P0 契约 ─► P1 意图+规划 ─► P2 Episteme ─► P3 Phylax ─► P4 痕迹+重规划 ─► P5 全回路 ─► P6 生产化
-  (缝)       (S2 脊椎)      (技能)         (策略)        (记忆+修复)        (对话)        (真 LLM+评测)
+P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ▢ ─► P6 ▢          P7 ▢ (P7.1 ✅)
+ seam     S2 脊柱   技能     策略    痕迹+    完整     生产          边缘回退
+                                    重规划    回路    (LLM+eval)    (离线链路)
 ```
 
-| 阶段 | 主题 | 里程碑 |
-|---|---|---|
-| P0 | 缝契约 + 测试脚手架 | —（基本完成） |
-| P1 | 意图路由 + 规划骨架 | **M-L3.1** |
-| P2 | Episteme 技能卡库 | **M-L3.2** |
-| P3 | Phylax 策略层 | M-L3.2 |
-| P4 | L4 痕迹 + 重规划 | **M-L3.3** |
-| P5 | 对话 + 完整 S2 回路 | M-L3.3 |
-| P6 | 生产推理器 + 评测 + 云启动 | **M-L3.4** |
-| P7 | 边缘回退 —— 本体离线 AI 链路（LLM + ASR + TTS） | **M-L3.6** |
+| 阶段 | 主题 | 里程碑 | 状态 |
+|---|---|---|---|
+| P0 | Seam 契约 + 测试脚手架 | — | ✅ |
+| P1 | 意图路由 + 规划骨架 | M-L3.1 | ✅ |
+| P2 | Episteme 技能卡库 | M-L3.2 | ✅ |
+| P3 | Phylax 策略层 | M-L3.2 | ✅ |
+| P4 | L4 痕迹 + 重规划 | M-L3.3 | ✅ |
+| P5 | 对话 + 完整 S2 回路 | M-L3.3 | ▢ 下一个 |
+| P6 | 生产推理器 + 评测 + 云启动 | M-L3.4 | ▢ |
+| P7 | 边缘回退 —— 本体离线 AI 链路（LLM+ASR+TTS） | M-L3.5 | ◐ P7.1 完成 |
 
 ---
 
 ## 3. 各阶段
 
-### P0 —— 缝契约 & 测试脚手架  ·  ✅ 完成（2026-06-16）
+### P0 —— Seam 契约 & 测试脚手架  ·  ✅ DONE (2026-06-16)
 
-**目标：** 冻结 L3 规划所依赖的协议，使 P1+ 是纯大脑逻辑。
+冻结 L3 规划所对的协议：`ExecutorAdapter` + 值类型（`execute.py`，开放词汇动词 D3、
+node-id 携带/回显 B9、类型化错误/恢复 B3、两层 manifest D3）、`PreferenceStore` 桩（L5）、
+`HealthReport`/`Brain.health()`（B5），以及带 `MockBody` + `g1d_manifest()`（B10）的
+`bodylink` 成员。契约测试通过。
 
-- ✅ `ExecutorAdapter` 协议 + 值类型（`SubTask`、`StatusUpdate`、
-  `CapabilityManifest`/`BodyProfile`/`VerbSpec`、`TaskStatus`/`ErrorCode`/
-  `RecoveryKind`/`RecoveryHint`）—— `execute.py`。开放词汇动词（D3）、node id
-  携带 + 回带（B9）、类型化错误/恢复（B3）、双层清单（D3）。
-- ✅ `PreferenceStore` 协议占位（L5，D2）—— `preference.py`，临时。
-- ✅ `HealthReport` + `Brain.health()`（B5）—— `health.py`、`brain.py`。
-- ✅ `bodylink` workspace 成员已建（D5 第 4 包）+ 注册进根 `pyproject.toml`
-  （`[tool.uv.workspace]` + `[tool.uv.sources]`）。`MockBody` 参考
-  `ExecutorAdapter` + `g1d_manifest()`（B10）+ `UnsupportedVerbError`。
-  在 workspace 里 build+install（`uv sync`）。
-- ✅ 契约测试：`mindloop/tests/test_execute.py`（缝值类型）+
-  `bodylink/tests/test_mock_body.py`（dispatch 往返、node id 回带、类型化失败
-  恢复、runtime-checkable 符合性、动词门控）。
+> `bodylink` 是**工作区跟踪目录**（根仓库），尚非独立 GitHub 仓/子模块。发布前毕业（需 owner
+> 放行 —— 对外动作）。§8 追踪。
 
-> `bodylink` 暂为 **workspace 内目录**（根仓），尚未像另三个那样独立 GitHub
-> 仓/submodule。发布前毕业为独立仓（需 owner 放行 —— 建仓是外向动作）。
-> 在此标注以免遗漏。
+### P1 —— 意图路由 + 规划骨架  ·  ✅ DONE (2026-06-26)  ·  M-L3.1
 
-**B2R 参考：** `code_framework.md`、`system_integration.md`、
-`embodiment_adaptation.md`（Body Profile 层）。
-**测试：** 缝值类型契约 + MockBody dispatch 往返 —— 完成。
-**验证：** 本地 **189 passed, 2 skipped · ruff clean · pyright 0**（tempomem +
-mindloop + worldsense + bodylink）。RTX PRO 交叉验证待办（P0 收尾时主机离线；
-此前已验证为可用 dev 环境，176 测试）。
-**出口：** 所有缝协议冻结 ✅；`bodylink` build+install ✅；node-id + 类型化
-错误契约锁定 ✅。
+**Spec：** [specs/P1-intent-planning.md](specs/P1-intent-planning.md)。两段式 B2R-MVP 格式：
+LLM 出文本动词序列 → `compile_commands` 确定性填 `SubTask` 元数据、绑对象到 node id（B9）、
+拒本体 manifest 没有的动词（D3）。`IntentRouter` + `Planner`（Verbalizer 驱动 + Scripted）。
+`Brain.handle` 编排 route → ask | plan+dispatch。8 测试；对真 Cosmos-Reason2 端点交叉验证。
+**线上无规则规划回退**（§1a）。
 
-### P1 —— 意图路由 + 规划骨架  ·  ✅ 完成（2026-06-26）  ·  M-L3.1
+### P2 —— Episteme 技能卡库  ·  ✅ DONE (2026-06-28)  ·  M-L3.2  ·  K2
 
-**Spec：** [specs/P1-intent-planning.md](specs/P1-intent-planning.md)（B2R-MVP
-两段式格式）。**目标：** 把 `Brain` 从问答盒变成路由器 + 规划器。
+**Spec：** [specs/P2-episteme-skill-cards.md](specs/P2-episteme-skill-cards.md)。程序性知识即
+数据：`SkillCard` = 扁平步骤 + 规则（K2；DAG 经 `schema_version` 预留）。`instantiate()` 触发
+情境匹配规则、叠加 L5 偏好、按 manifest 门控动词（D3）→ 出**与 LLM 规划器相同的 `Command` IR**。
+BYO-encoder 检索；`SkillCardPlanner` 库优先、LLM 回退标低置信。带洗衣 + 烹饪卡（对 MockBody
+端到端）。需给本体 manifest 加 `operate_appliance` 动词。
 
-- `IntentRouter` —— 把指令分类为 `{任务, 提问, 闲聊}`。
-- `Planner` —— 任务意图 → **技能动词**的 `list[SubTask]`；查本体的
-  `CapabilityManifest`，**本体不会的动词绝不下发**（D3）。
-- `Brain.handle(instruction)` —— 编排：路由 → (`ask` | 规划+下发 | 闲聊)；
-  把物体槽位绑到 node id（B9）。
+### P3 —— Phylax 策略层  ·  ✅ DONE (2026-06-28)  ·  M-L3.2  ·  D4 顶层
 
-**B2R 参考：** `l3/intent_router.py`、`l3/task_planner.py`、`psyche_layer.md`。
-**测试（ScriptedReasoner + MockBody）：** "拿桌上的瓶子" → `[navigate, pick]`
-计划，所有槽位带引用；不支持的动词 → 拒绝、不下发。
-**出口：** 一条家务指令产出动词计划，下发到 MockBody，每个物体槽位都带
-node id。✅ 达成 —— `plan.py` + `Brain.handle`；8 个网络无关测试；全套 197 passed；
-ruff clean；pyright 0。并对真 Cosmos-Reason2 vLLM 端点端到端交叉验证（意图路由 +
-LLM 动词计划 → node 绑定下发 + 带引用问答）。
+**Spec：** [specs/P3-phylax-policy.md](specs/P3-phylax-policy.md)。大脑侧**语义**安全层（BT +
+反射层推迟）。声明式 `Policy`（adult-only 动词、需监督动词、禁区 node id、近人限速、可信卡
+provenance）按 `SafetyContext` 经 `Phylax.check` 审，在 `handle()` 里 compile 与 dispatch
+**之间**跑。任一 violation **阻断整个 plan** —— 停+说、不重路由/重试（B2R §9"上层想做永不覆盖
+下层不可以"）。`SkillCardPlanner` 拒 untrusted `safety:` 卡。移植 B2R `safety_architecture.md`
+§2/§8/§9。
 
-### P2 —— Episteme 技能卡库  ·  M-L3.2  ·  D3/§5、K2  ·  ✅ DONE
+### P4 —— L4 痕迹 + 重规划  ·  ✅ DONE (2026-06-28)  ·  M-L3.3  ·  D2 + B3
 
-**目标：** 程序性知识做成数据 —— 做菜 / 按面料洗衣。
-**已完成（2026-06-28）：** `episteme.py` —— 见 [specs/P2-episteme-skill-cards.md](specs/P2-episteme-skill-cards.md)。
+**Spec：** [specs/P4-trace-replanning.md](specs/P4-trace-replanning.md)。
 
-- `SkillCard` schema —— **flat steps + rules（K2）**；DAG 留 schema 版本位。
-  字段：`id`、`category`、`preconditions`、`rules`、`steps`、`failure_hints`、
-  `safety`、`provenance`。
-- YAML 卡加载器 + 卡库**语义检索**。
-- 实例化：绑 category → node id、解规则、叠加 L5 偏好、查清单 → 展开动词序列。
-- 无卡 → LLM 通用知识兜底，标低置信。
+- **L4 `TraceStore`**（`trace.py`）—— 只增 stdlib-sqlite 情节日志，记每次尝试+失败、引用场景
+  node id（B9）；可按 node/session 查、`failures()` 视图、永不删（清=轮换 `session_id`）。
+  **暂在 `mindloop`**；D2 设想的并入 tempomem **核心**推迟到跨仓协调改动（§8 追踪）——
+  引用 node id 已满足共享 id 空间要求。
+- **`Replanner`**（`replan.py`）—— 类型化 FAILED `StatusUpdate`（B3）→ **有界**修复 `SubTask`
+  序列（编译后、复用 node id）：RETRY / ADJUST（offset/relax/force）/ REROUTE（导航+重发）/
+  SKIP / ESCALATE。上限：每(verb,node) ≤2 + 全局 ≤6 → 触顶升级（停+说，无死循环）。
+  `Brain(replanner=, trace=)` 把派发变有界重规划回路；修复序列派发前**经 Phylax(P3) 重审**。
 
-**B2R 参考：** `techne_crystallization.md`、`household_task_taxonomy.md`、
-`appliance_interaction.md`。
-**测试：** `laundry_basic` + 一张做菜卡 → 动词计划；羊毛/深色规则解析为正确
-程序；缺卡兜底标记。
-**出口：** 洗衣 + 做菜卡对 MockBody 端到端跑通。
+### P5 —— 对话 + 完整 S2 回路  ·  ▢ 下一个  ·  M-L3.3
 
-### P3 —— Phylax 策略层  ·  M-L3.2  ·  D4 顶层（语义）  ·  ✅ DONE
+**目标：** 对 MockBody（可选 Genesis 仿真）端到端跑完整认知回路。关 M-L3.3。
 
-**已完成（2026-06-28）：** `phylax.py` —— 见 [specs/P3-phylax-policy.md](specs/P3-phylax-policy.md)。
-
-**目标：** 可移植的大脑侧安全层（另两层 Phylax —— `bodylink` 的符号 BT、
-固件的反射 —— 暂缓）。
-
-- 声明式策略配置：禁区、人距限速、动作白名单、按角色权限门控。
-- 规划 → 下发之间的策略检查门；每个计划下发前必过。
-- 安全类处置：停 + 语音，**不绕行、不重试**。
-- 社区技能卡不可信：带 `safety:` 标注的卡须经签名 + 审核门才生效。
-
-**B2R 参考：** `safety_architecture.md`（移植 §2 L3 硬约束、§8 权限、§9 仲裁；
-**"上层的想做不能覆盖下层的不可以"**）。
-**测试：** 非成人发起刀具 → 拒绝；人旁超速 → 拒绝；未签名 `safety:` 卡 → 拒绝。
-**出口：** 每个下发计划都过了策略检查；违规被拦 + 入痕迹。
-
-### P4 —— L4 痕迹 + 重规划  ·  M-L3.3  ·  D2 + B3  ·  ✅ DONE
-
-**已完成（2026-06-28）：** `trace.py` + `replan.py` —— 见 [specs/P4-trace-replanning.md](specs/P4-trace-replanning.md)。（L4 痕迹暂在 mindloop；D2 核心合并推迟。）
-
-**目标：** episodic 记忆 + 失败驱动修复。
-
-- **L4 痕迹存进 tempomem core**（D2）—— episodic：计划、结果、策略决定；
-  每条引用场景 node id（共享 id 空间）。*跨仓：需 tempomem core 改动 ——
-  与 core changelog 协调。*
-- `Replanner` —— 失败 `StatusUpdate`（类型化 `ERR_*`，B3）→ 用技能卡的
-  `failure_hints` + 类型化调整词汇（`position_offset`、`orientation_relax`、
-  `force_adjustment`）重规划。
-
-**B2R 参考：** `trace_memory.md`、`L3_cognition.md` 的否定性重规划回路。
-**测试：** 抓取失败 → 带调整重规划；L4 痕迹记录两次尝试，按 node id 可查。
-**出口：** 失败下发触发有界重规划；L4 痕迹可查、带引用。
-
-### P5 —— 对话 + 完整 S2 回路  ·  M-L3.3
-
-**目标：** 完整认知回路，对 MockBody 端到端。
-
-- 对话引擎 —— 记忆接地闲聊（扩展 `ask`）；多轮上下文。
-- 全回路接通：指令 → 路由 → 规划 → 策略 → 下发 → 状态 → 重规划 → 痕迹。
-- L5 `PreferenceStore` 叠加 —— 偏好按人改写卡默认值。
+- 对话引擎 —— 记忆接地多轮 chat（扩 `ask`）。
+- 完整回路串成一个场景：instruction → route → plan → policy → dispatch → status → replan → trace。
+- L5 `PreferenceStore` 叠加 —— 偏好按人改卡片默认。
 
 **B2R 参考：** `05_scenarios/breakfast_e2e.md`、`e2e_walkthrough.md`。
-**测试：** 对 MockBody 复现 B2R 早餐 / 清理场景 —— 全程带引用、入痕迹、无真网络。
-**出口：** 一个 B2R 端到端家务场景在完整 S2 回路 + MockBody 上跑通。
+**出口：** 一个 B2R 端到端家庭场景在完整 S2 回路对 MockBody 跑通，全引用+全痕迹、无真网络。
 
-### P6 —— 生产推理器 + 评测 + 云启动  ·  M-L3.4  ·  B6
+### P6 —— 生产推理器 + 评测 + 云启动  ·  ▢  ·  M-L3.4  ·  B6
 
 **目标：** 把 ScriptedReasoner 换成真 LLM；测量；部署。
 
-- 把 `CosmosReasonVerbalizer`（已有）接成端到端 S2 推理器。
-- 评测 harness：规划准确率、引用合规、策略合规、重规划成功率（扩展 tempomem
-  `bench` + brain `eval`）。
-- 云启动 → `base_url` 一切落 Thor 本体（B6），协议零改动。
+- 把 `CosmosReasonVerbalizer` 接成端到端 S2 推理器（P1 验证时临时做过；变成标准回路）。
+- 评测 harness：规划准确率、引用合规、策略合规、重规划成功率。**定义具体阈值**（open item §8）——
+  当前只设了 B2 时延预算（查询 100–500 ms，简单任务 0.5–2 s）。
+- 云启动 → `base_url` 切到 Thor 本体（B6），协议不变。
 
-**B2R 参考：** `roadmap_techstack.md`、`mvp_plans.md`。
-**测试：** 真 Cosmos-Reason2 跑回路；评测套对预算达标（B2：查询 100–500 ms，
-简单任务 0.5–2 s）。
 **出口：** 生产推理器驱动全回路；评测阈值达标；云 → Thor 切换验证。
 
 ---
 
-### P7 —— 边缘回退：本体离线 AI 链路  ·  M-L3.6  ·  横切
+### P7 —— 边缘回退：本体离线 AI 链路  ·  ◐ (P7.1 完成)  ·  M-L3.5  ·  横切
 
-**目标：** 网络断时靠本体保持认知可用 —— 小本地 LLM + 本体 ASR + TTS 构成自给 AI 链路。
-远端大模型为主；本体链路是**降级回退**，绝不丢失安全与记忆（二者本就本地）。完整 spec：
-[specs/P7-edge-fallback.md](specs/P7-edge-fallback.md)。
+**Spec：** [specs/P7-edge-fallback.md](specs/P7-edge-fallback.md)。网络断时靠本体保持认知可用
+—— 小本地 LLM + 本体 ASR + TTS 构成自给链路。远端大模型为主；本体是**降级回退**，绝不丢失
+安全与记忆（二者本就本地）。
 
-- **`FailoverVerbalizer`** —— 包 `[远端, 本体]` Verbalizer；遇传输错误（`QueryError`）回落
-  本地 OpenAI 兼容服务，带滞回。大脑不变（复用 `Verbalizer` seam）；覆盖 Reasoner 与
-  Planner/IntentRouter。
-- **`Listener`（ASR）+ `Speaker`（TTS）seam** —— mindloop 发的新 BYO 协议（同
-  `ExecutorAdapter`），带 `Mock*`；薄 `voice.py` 回路串 `Listener → handle → Speaker`。
-  本体引擎（whisper.cpp/sherpa-onnx；piper）树外。
-- **模式仲裁** —— `ConnectivityMonitor` 选在线（远端）vs 离线（本体）；降级契约（技能卡优先、
-  保守安全、更简答案、诚实"我离线了" UX）。
+- **P7.1 ✅** —— `FailoverVerbalizer`：包 `[远端, 本体]` Verbalizer；遇 `QueryError` 回落本地
+  服务，基于调用计数滞回。复用 `Verbalizer` seam → 覆盖 Reasoner + Planner/IntentRouter，**大脑零改动**。
+- **P7.2 ▢** —— `Listener`（ASR）+ `Speaker`（TTS）BYO seam + 薄 `voice.py` 回路。
+- **P7.3 ▢** —— 接选定边缘栈（**Qwen 对齐**：Reasoner=Cosmos-Reason2，Planner=Qwen3.x-8B，
+  ASR=Qwen3-ASR，TTS=Qwen3-TTS）于 Jetson Thor/Orin；验证。
+- **P7.4 ▢** —— 降级契约 + 模式 telemetry + "我离线了" UX。
 
-**Owner 决策（spec §7）：** 降级非对等（D-edge-1）；ASR/TTS 作新 BYO seam（D-edge-2）；
-边缘 LLM/ASR/TTS 栈 + 算力目标；ASR/TTS 包归属。
-**出口（M-L3.6）：** 拔网 —— 机器人仍听到、规划、过安全 gate、动作、说话，全靠自身算力。
+**未决 owner 决策（spec §7）：** 降级非对等（D-edge-1）；ASR/TTS 作新 BYO seam（D-edge-2）。
+**边缘栈：已定 Qwen 对齐。**
 
 ---
 
 ## 4. 里程碑
 
-| 里程碑 | 阶段 | 完成定义 |
-|---|---|---|
-| **M-L3.1** | P1 | 指令 → 带引用动词计划 → MockBody 下发 |
-| **M-L3.2** | P2 + P3 | 技能卡跑通；每个计划过策略检查 |
-| **M-L3.3** | P4 + P5 | 完整 S2 回路带痕迹 + 重规划；复现 B2R 场景 |
-| **M-L3.4** | P6 | 真 Cosmos-Reason2 + 评测绿 + 云→Thor |
+| 里程碑 | 阶段 | 状态 | 完成定义 |
+|---|---|---|---|
+| **M-L3.1** | P1 | ✅ | instruction → 带引用动词 plan → MockBody 派发 |
+| **M-L3.2** | P2 + P3 | ✅ | 技能卡跑通；每个 plan 经策略检查 |
+| **M-L3.3** | P4 + P5 | ◐ (P4 ✅) | 完整 S2 回路带痕迹+重规划；复现 B2R 场景 |
+| **M-L3.4** | P6 | ▢ | 真 Cosmos-Reason2 + 评测达标 + 云→Thor |
+| **M-L3.5** | P7 | ◐ (P7.1 ✅) | 拔网 —— 机器人仍听到、规划、过 gate、动作、说话，全本体 |
 
 ---
 
-## 5. 横切 & 依赖
+## 5. 横切与依赖
 
-- **tempomem core 改动（P4）：** L4 痕迹存落在 core，不在 mindloop —— 经 core
-  CHANGELOG 协调；保持 numpy-only 契约。
-- **本体团队需求（`body-team-asks-v0.md`）：** `/l2/capabilities`、世界系检测、
-  node-id 缝、类型化错误。**MockBody 期间解锁全部 L3** —— 真机集成等这些答复。
-- **Episteme 检索的编码器（P2）：** 语义卡检索需编码器；测试用 hash 编码器，
-  真编码器藏 extra 后。
-- **命名（架构 §10）：** Psyche / Episteme / Phylax / Hexis —— 成为公开模块名
-  前确认。
+- **L4 痕迹归属（P4）：** 建在 `mindloop`（`trace.py`），引用 node id。D2 设想并入 tempomem
+  **核心**已**推迟** —— 见 §8。
+- **本体团队请求（`body-team-asks-v0.md`）：** `/l2/capabilities`、世界系检测、node-id seam、
+  类型化错误。**MockBody + Genesis 仿真当下解锁全部 L3** —— 真机集成等这些答复。
+- **Episteme 检索 encoder（P2）：** BYO encoder（测试用 hash）；真 encoder 后置 extra 仍可选/未接。
+- **命名（architecture §10）：** Psyche / Episteme / Phylax / Hexis —— **已采用**：`episteme.py`
+  + `phylax.py` 作模块名发了（"先确认"闸视为已了；owner 想重议见 §8）。
 
 ## 6. 风险
 
-| 风险 | 缓解 |
+| 风险 | 缓解 / 状态 |
 |---|---|
-| L4 痕迹耦合 mindloop ↔ tempomem core | 先把 L4 落 core（P4 卡在一次 core 发布上） |
-| Episteme 检索质量 | 先规则优先；语义检索增量叠加 |
-| Cosmos-Reason2 延迟 vs B2 预算 | 云启动；P6 评测先测量再落 Thor |
-| 策略完整性（暂无 FMEA） | 从 B2R 硬约束枚举；FMEA 是继承的待决项 |
-| 范围蔓延进 L2/L1 | 硬线 —— 暂缓、复用 B2R；L3 开发期唯一机身是 MockBody |
+| L4 痕迹 ↔ tempomem 核心耦合 | **以偏离解决** —— 建在 mindloop 引用 node id；核心合并推迟（§8），无核心发版卡 P4 |
+| Episteme 检索质量 | 规则优先；语义检索增量（已发 BYO-encoder） |
+| Cosmos-Reason2 时延 vs B2 预算 | 上 Thor 前 P6 评测测量 |
+| 策略完备性（无 FMEA） | 从 B2R 硬约束枚举；**FMEA 仍 open**（§8） |
+| 蔓延进 L2/L1 | 硬线 —— L3 开发本体只 MockBody/仿真 |
 
 ---
 
-## 7. 排期
+## 7. 排序
 
-P0 → **P1** → (P2 ∥ P3) → P4 → P5 → P6。P1 落地后 P2、P3 可并行（卡需要规划器；
-策略包住规划器 —— 互相独立）。P4 的 L4-进-core 依赖是唯一跨仓门 —— 尽早启动
-core 改动。
+`P0 → P1 → (P2 ∥ P3) → P4 → P5 → P6`，**P7 横切**（P7.1 应 owner 请求提前落；P7.2–7.4 卡在
+未决 §7-spec 决策）。D3 本体适配轨在 `bodylink` 并行。**P5 是关键路径下一步**（关 M-L3.3，
+首个全回路集成证明）。
 
-*计划 v1，2026-06-15。每个阶段先 spec 再码；声明完成前先验证。*
+---
+
+## 8. 未决项 & 决策日志
+
+| 项 | 状态 | 备注 |
+|---|---|---|
+| **D2：L4 痕迹 → tempomem 核心合并** | 推迟（2026-06-28） | 建在 mindloop；核心合并是未来跨仓协调改动。别丢。 |
+| **模块命名**（Episteme/Phylax/Hexis） | 已采用 | 未单独 owner 签字就作模块名发了；不合意可重议 |
+| **Phylax FMEA** | open（继承） | 策略从 B2R 硬约束枚举，非失效模式分析所得 |
+| **P6 评测阈值** | 未定义 | 只设了 B2 时延预算；准确率/合规率目标待定 |
+| **negation_constraints SubTask 字段** | 未加 | P4 不需要；要 B2R 重规划完全对等再加 |
+| **bodylink → 独立仓/子模块** | 待定 | 需 owner 放行（对外动作） |
+| **D3 本体轨**（真 HW adapter、BT/反射 Phylax 层） | 待定 | bodylink 设计文档 + TECH-DESIGN 追踪，此处未分期 |
+
+---
+
+*2026-06-28 更新。每阶段先写 spec；声称 done 前先验证。*
