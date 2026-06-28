@@ -101,15 +101,27 @@ The on-body model is weaker; offline mode tightens accordingly:
   disabled offline.
 - **Honest UX** — TTS announces degraded mode ("I'm offline, working locally").
 
-## 6. Edge hardware & model candidates (recommendations)
+## 6. Edge stack (chosen — Qwen-aligned)
+
+Stay in one model family on-body: the user already serves Qwen on the workstation,
+so a shared Qwen ecosystem (tokenizer, prompt conventions, tooling) keeps the
+on-body chain consistent with the online path, and small Qwen audio models fit an
+edge budget.
 
 - **Compute** — NVIDIA Jetson AGX Thor / Orin on the robot, or the body's onboard
-  GPU. Runs the local OpenAI-compatible server.
-- **LLM** — a small quantized instruct/VLM: Qwen3-4B/8B or Cosmos-Reason2-2B in
-  4-bit, served by llama.cpp / MLC / Ollama / vLLM.
-- **ASR** — sherpa-onnx (streaming, low-latency) or whisper.cpp (small/base) or
-  Moonshine (tiny). All run offline on edge.
-- **TTS** — piper (fast, local) or kokoro / sherpa-onnx TTS.
+  GPU. Runs the local OpenAI-compatible server (vLLM / llama.cpp / Ollama).
+- **LLM (on-body)** — the **same dual split as online**, just smaller: the
+  **Reasoner** = Cosmos-Reason2 (physical-AI VLM; the 2B/8B small variant); the
+  **Planner / IntentRouter** = **Qwen3.x-8B** (strong instruction follower, thinking
+  off → clean verb sequences). 4-bit quantized for the edge. `CosmosReasonVerbalizer`
+  speaks to both unchanged (any `/v1/chat`), so `FailoverVerbalizer([remote_8B,
+  onbody_8B])` wraps each role.
+- **ASR** — **Qwen3-ASR** (the small / Flash variant), Qwen-family speech-to-text,
+  run offline on edge.
+- **TTS** — **Qwen3-TTS** (the small / Flash variant), Qwen-family text-to-speech.
+
+> Confirm the exact on-device-capable Qwen3-ASR / Qwen3-TTS variant + quantization
+> against the chosen edge compute (Thor/Orin VRAM) during P7.3.
 
 ## 7. Owner decisions (to ratify)
 
@@ -118,7 +130,9 @@ The on-body model is weaker; offline mode tightens accordingly:
 2. **D-edge-2** — ASR/TTS enter as **new BYO seam protocols** (`Listener` /
    `Speaker`), engines out-of-tree — same pattern as `Verbalizer`/`ExecutorAdapter`.
    Confirm.
-3. **Edge stack** — pick the on-body LLM, ASR, TTS engines + the edge compute target.
+3. **Edge stack** — decided **Qwen-aligned** (Reasoner = Cosmos-Reason2, Planner =
+   Qwen3.x-8B, ASR = Qwen3-ASR small, TTS = Qwen3-TTS small). Remaining: confirm the
+   exact on-device variant + quantization against the edge compute target.
 4. **ASR/TTS home** — new package (e.g. an "ears+mouth" member) vs. folding into
    `worldsense` (perception) / `bodylink`. Recommendation: protocols in `mindloop`,
    engines in a small new member or the device package.

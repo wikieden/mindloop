@@ -87,20 +87,29 @@ sherpa-onnx）。说 `Answer.text`、`plan.speak`、Phylax `refusal_speak`。`Mo
 - **更简答案** —— `ask` 可缩 token 预算；离线可禁开放式闲聊。
 - **诚实 UX** —— TTS 告知降级（"我离线了，本地处理中"）。
 
-## 6. 边缘硬件与模型候选（推荐）
+## 6. 边缘栈（已选 —— Qwen 对齐）
 
-- **算力** —— 机器人上 NVIDIA Jetson AGX Thor / Orin，或本体板载 GPU。跑本地 OpenAI 兼容服务。
-- **LLM** —— 小量化 instruct/VLM：Qwen3-4B/8B 或 Cosmos-Reason2-2B 4-bit，llama.cpp / MLC /
-  Ollama / vLLM 服务。
-- **ASR** —— sherpa-onnx（流式低延迟）或 whisper.cpp（small/base）或 Moonshine（极小）。均离线跑边缘。
-- **TTS** —— piper（快、本地）或 kokoro / sherpa-onnx TTS。
+本体统一在一个模型家族：用户工作站本就跑 Qwen，统一 Qwen 生态（tokenizer、prompt 约定、
+工具链）让本体链路与线上路径一致，且小参量 Qwen 音频模型适配边缘预算。
+
+- **算力** —— 机器人上 NVIDIA Jetson AGX Thor / Orin，或本体板载 GPU。跑本地 OpenAI 兼容服务
+  （vLLM / llama.cpp / Ollama）。
+- **LLM（本体）** —— **与线上同款双裂解**、只是更小：**Reasoner** = Cosmos-Reason2
+  （物理-AI VLM；2B/8B 小变体）；**Planner / IntentRouter** = **Qwen3.x-8B**（强指令遵循，
+  关思考 → 干净动词序列）。边缘 4-bit 量化。`CosmosReasonVerbalizer` 对两者原样可用（任意
+  `/v1/chat`），故 `FailoverVerbalizer([远端_8B, 本体_8B])` 包住每个角色。
+- **ASR** —— **Qwen3-ASR**（small / Flash 变体），Qwen 家族语音转文本，离线跑边缘。
+- **TTS** —— **Qwen3-TTS**（small / Flash 变体），Qwen 家族文本转语音。
+
+> P7.3 时对照所选边缘算力（Thor/Orin 显存）确认 Qwen3-ASR / Qwen3-TTS 的具体可上设备变体 + 量化。
 
 ## 7. Owner 决策（待批准）
 
 1. **D-edge-1** —— 本体回退是**降级、非对等**（技能卡优先 + 保守）。确认。
 2. **D-edge-2** —— ASR/TTS 作为**新 BYO seam 协议**（`Listener` / `Speaker`），引擎树外 ——
    同 `Verbalizer`/`ExecutorAdapter` 模式。确认。
-3. **边缘栈** —— 选本体 LLM、ASR、TTS 引擎 + 边缘算力目标。
+3. **边缘栈** —— 已定 **Qwen 对齐**（Reasoner = Cosmos-Reason2，Planner = Qwen3.x-8B，
+   ASR = Qwen3-ASR small，TTS = Qwen3-TTS small）。剩：对照边缘算力确认具体可上设备变体 + 量化。
 4. **ASR/TTS 归属** —— 新包（如 "耳+嘴" 成员）vs 并入 `worldsense`（感知）/ `bodylink`。
    推荐：协议在 `mindloop`，引擎在小新成员或设备包。
 
