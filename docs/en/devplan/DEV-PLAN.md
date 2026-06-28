@@ -83,7 +83,7 @@ P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ✅ ─
 | P3 | Phylax policy tier | M-L3.2 | ✅ |
 | P4 | L4 Trace + replanning | M-L3.3 | ✅ |
 | P5 | Dialogue + full S2 loop | M-L3.3 | ✅ |
-| P6 | Production reasoner + eval + cloud bootstrap | M-L3.4 | ◐ eval done |
+| P6 | Production reasoner + eval + cloud bootstrap | M-L3.4 | ◐ eval + real-LLM drive done; Thor pending HW |
 | P7 | Edge fallback — on-body offline AI chain (LLM+ASR+TTS) | M-L3.5 | ◐ P7.1+P7.2 done |
 
 ---
@@ -168,11 +168,18 @@ task-safety-blocked, fully cited + traced, no real network.
   accuracy, policy compliance, replan success, citation compliance against scripted
   scenarios; `EvalThresholds` proposes pass bars (§8). The objective scaffolding is
   in place; it runs against any wired reasoner.
-- **▢** Wire `CosmosReasonVerbalizer` as the standard S2 reasoner end-to-end (done
-  ad-hoc in P1 validation) — needs the host endpoint live.
+- **✅ Real-LLM drive validated (2026-06-28)** — the full S2 loop ran end-to-end
+  against the production models on the RTX PRO 6000 host: **Cosmos-Reason2-8B**
+  (:8002) as the reasoner + **Qwen3.6-27B** (:8001, thinking off) as the
+  planner/router, MockBody as the body. Bilingual tasks produced correct
+  node-bound verb plans dispatched to SUCCESS with language-matched `speak`;
+  questions answered with cited node ids. **Latency within the B2 budget** —
+  question avg 0.41 s (budget 0.1–0.5 s), task avg 0.75 s (budget 0.5–2 s). The
+  eval harness's citation metric surfaced a real weakness: Cosmos under-cites on
+  some English questions (validity 0.5) — a model-quality finding, not a code bug.
 - **▢** Cloud bootstrap → onboard Thor via `base_url` switch (B6) — needs hardware.
 
-Latency budget (B2): query 100–500 ms, simple task 0.5–2 s.
+Latency budget (B2): query 100–500 ms, simple task 0.5–2 s. **Met.**
 
 **Exit:** production reasoner drives the full loop; eval thresholds met; cloud → Thor
 switch verified.
