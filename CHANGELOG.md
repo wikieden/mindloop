@@ -8,6 +8,17 @@ follow SemVer (pre-1.0, the API may change between minor releases).
 
 ### Added
 
+- **`SceneContextProvider` seam (dynamic-scene, phase 1)** — `scene_context.py`:
+  factors the read path (`query` → `serialize`) out of `Brain.ask` /
+  `Brain._plan_context` into a seam — `context(Focus, *, k, max_tokens) -> (text,
+  version)` — so the *when/how-much* of scene context can later evolve (active
+  perception, version-gated re-query) with no orchestration change. `Focus` carries
+  the query + plan `node_ids` to keep in view + the robot region. **Behavior-
+  preserving:** `DefaultSceneContextProvider` reproduces today's context exactly;
+  the map `version` is plumbing (advances on `bump()`, which `Brain.observe`/
+  `ingest` now call after a perception write) for the later focus-gated re-serialize.
+  First step of the design in docs/research/dynamic-scene-context.md. `Brain(
+  context_provider=…)` is opt-in; the default is wired automatically.
 - **Voice seams + loop (P7.2, edge fallback)** — `voice.py`: `Listener` (ASR) +
   `Speaker` (TTS) BYO protocols (the ears + mouth, same pattern as
   `ExecutorAdapter`), with `MockListener`/`MockSpeaker` doubles, and `VoiceLoop`

@@ -67,6 +67,7 @@ from .plan import (
 from .preference import DictPreferenceStore, PreferenceStore
 from .reason import Answer, Reasoner, ScriptedReasoner, ToolCall, VerbalizerReasoner
 from .replan import ReplanAction, ReplanDecision, Replanner
+from .scene_context import DefaultSceneContextProvider, Focus, SceneContextProvider
 from .trace import TraceRecord, TraceStore
 from .verbalizers import CosmosReasonVerbalizer, FailoverVerbalizer, strip_reasoning
 from .voice import Listener, MockListener, MockSpeaker, Speaker, VoiceLoop, reply_text
@@ -83,6 +84,7 @@ __all__ = [
     "Command",
     "Conversation",
     "CosmosReasonVerbalizer",
+    "DefaultSceneContextProvider",
     "DictPreferenceStore",
     "ErrorCode",
     "EvalCase",
@@ -90,6 +92,7 @@ __all__ = [
     "EvalThresholds",
     "ExecutorAdapter",
     "FailoverVerbalizer",
+    "Focus",
     "HandleResult",
     "HealthReport",
     "IntentRouter",
@@ -110,6 +113,7 @@ __all__ = [
     "Role",
     "Rule",
     "SafetyContext",
+    "SceneContextProvider",
     "ScriptedIntentRouter",
     "ScriptedPlanner",
     "ScriptedReasoner",

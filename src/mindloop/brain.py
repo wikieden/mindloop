@@ -22,6 +22,7 @@ from .phylax import refusal_speak
 from .plan import HandleResult, Plan, compile_commands
 from .reason import Answer, Reasoner
 from .replan import ReplanAction
+from .scene_context import DefaultSceneContextProvider, Focus
 
 if TYPE_CHECKING:
     import numpy as np
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
     from .plan import IntentRouter, Planner
     from .preference import PreferenceStore
     from .replan import Replanner
+    from .scene_context import SceneContextProvider
     from .trace import TraceStore
 
 
@@ -58,12 +60,16 @@ class Brain:
         replanner: Replanner | None = None,
         trace: TraceStore | None = None,
         preferences: PreferenceStore | None = None,
+        context_provider: SceneContextProvider | None = None,
         default_speak: str = "OK.",
     ) -> None:
         self._mem = mem
         self._reasoner = reasoner
         self._adapter = adapter
         self._budget = max_tokens
+        # The read-path seam (dynamic-scene P1): builds the serialized scene context
+        # for a Focus + a map version. Default wraps today's query+serialize exactly.
+        self._ctx = context_provider or DefaultSceneContextProvider(mem, default_budget=max_tokens)
         self._router = router
         self._planner = planner
         self._executor = executor
@@ -100,12 +106,22 @@ class Brain:
         in the `worldsense` companion repo. Returns the commit stats.
         """
         self._mem.add_frame(rgb, depth, pose, adapter=adapter or self._adapter, episode=episode)
-        return self._mem.commit()
+        stats = self._mem.commit()
+        self._bump_map_version()
+        return stats
 
     def ingest(self, detections: list[Detection], *, episode: str | None = None) -> Any:
         """Remember caller-supplied detections (BYO perception), then fuse."""
         self._mem.add_detections(detections, episode=episode)
-        return self._mem.commit()
+        stats = self._mem.commit()
+        self._bump_map_version()
+        return stats
+
+    def _bump_map_version(self) -> None:
+        """Advance the context provider's map version after a perception write (P1)."""
+        bump = getattr(self._ctx, "bump", None)
+        if callable(bump):
+            bump()
 
     def ask(self, question: str, *, k: int = 64, dialogue: str = "") -> Answer:
         """Retrieve a query-relevant subgraph → reason → answer.
@@ -121,14 +137,7 @@ class Brain:
         `dialogue` (P5) is recent conversation history; when given it is prepended
         to the reasoner context so a follow-up resolves against prior turns.
         """
-        hits = self._mem.query(question, k=k)
-        node_ids = {n.id for n in hits.nodes}
-        if node_ids:
-            context = self._mem.serialize(
-                format="prompt", node_ids=node_ids, max_tokens=self._budget
-            )
-        else:
-            context = self._mem.serialize(format="prompt", max_tokens=self._budget)
+        context, _ = self._ctx.context(Focus(query=question), k=k, max_tokens=self._budget)
         if dialogue:
             context = f"CONVERSATION (recent turns):\n{dialogue}\n\n{context}"
         return self._reasoner.reason(question, context)
@@ -296,13 +305,7 @@ class Brain:
     def _plan_context(self, instruction: str, *, manifest_verbs: list[str], k: int) -> str:
         """Build the planner's context: the relevant scene subgraph + the verb
         vocabulary the body supports (so the LLM only plans dispatchable verbs)."""
-        hits = self._mem.query(instruction, k=k)
-        node_ids = {n.id for n in hits.nodes}
-        scene = (
-            self._mem.serialize(format="prompt", node_ids=node_ids, max_tokens=self._budget)
-            if node_ids
-            else self._mem.serialize(format="prompt", max_tokens=self._budget)
-        )
+        scene, _ = self._ctx.context(Focus(query=instruction), k=k, max_tokens=self._budget)
         return f"Available verbs: {', '.join(manifest_verbs)}\n\nSCENE:\n{scene}"
 
     def _drain(self, subtask: Any) -> StatusUpdate:

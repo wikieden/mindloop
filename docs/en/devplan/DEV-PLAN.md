@@ -265,6 +265,7 @@ reasoner + eval).
 | **negation_constraints SubTask field** | not added | P4 didn't need it; add if full B2R replan parity is wanted |
 | **bodylink → own repo/submodule** | pending | needs owner go-ahead (outward action) |
 | **D3 body track** (real HW adapter, BT/reflex Phylax tiers) | pending | tracked in bodylink design doc + TECH-DESIGN, not phased here |
+| **Dynamic scene context** (active perception) | phase 1 done | `SceneContextProvider` seam landed; effect write-back / version-gated re-query / active perception are phases 2–4 — see research/dynamic-scene-context.md |
 
 ---
 

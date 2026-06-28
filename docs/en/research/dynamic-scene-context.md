@@ -173,7 +173,8 @@ Then turn each on behind a flag.
 ## 7. Phasing
 
 1. **Factor** `SceneContextProvider` out of `ask`/`_plan_context` — no behavior
-   change, just a seam + a `version`.
+   change, just a seam + a `version`. **✅ done (2026-06-28)** — `scene_context.py`;
+   `Brain(context_provider=…)`, version bumps on `observe`/`ingest`.
 2. **Effect write-back** — apply confirmed `effects` to the map on SUCCESS; re-vet
    the plan tail's preconditions against the updated map.
 3. **Version-gated re-serialize** — re-query fresh context on replan + on a
