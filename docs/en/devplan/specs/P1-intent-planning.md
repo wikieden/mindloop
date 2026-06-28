@@ -21,8 +21,52 @@ LLM → CommandSequence{commands: list[str]}        # compact text verb lines
 The LLM emits only a **compact text verb sequence** (intuitive, token-cheap,
 schema-stable, hard to hallucinate); a **deterministic compiler** fills the
 structured fields (`skill`/`preconditions`/`effects`/`timeout_s`) from a
-per-verb table. The sequence ends with a user-facing utterance. LLM
-unavailable → fall back to a hard-coded sequence.
+per-verb table. The sequence ends with a user-facing utterance.
+
+## 1a. Control flow — LLM decides, rules compile (no rule-planning fallback)
+
+The split is **LLM for stage 1, rules for stage 2** — not "LLM with a
+rule-based fallback planner". Online, planning is **always** the LLM; the rule
+layer is deterministic *post-processing* (schema fill + safety gate), never a
+substitute planner. (B2R's "LLM unavailable → hard-coded sequence" path is
+**not** carried — we have no canned plan; an empty LLM reply yields an empty
+plan, which is safe.)
+
+```
+                    instruction
+                        │
+              ┌─────────▼──────────┐
+              │  IntentRouter      │  ◀── LLM   (VerbalizerIntentRouter)
+              │  classify()        │      task / question / chat
+              └───┬────────────┬───┘
+        question/ │            │ task
+          chat    │            │
+        ┌─────────▼──┐   ┌─────▼──────────┐
+        │ ask()      │   │  Planner       │ ◀── LLM   (VerbalizerPlanner)
+        │ retrieve→  │   │  plan()        │     emits TEXT verb lines
+        │ reason     │   └─────┬──────────┘     "navigate table / grasp mug / speak …"
+        │ (LLM)      │         │
+        └─────┬──────┘   ┌─────▼──────────────────────────┐
+              │          │  compile_commands()            │ ◀── RULES (deterministic)
+              │          │  • _VERB_TABLE → skill/pre/eff │     no LLM
+              │          │  • mem.query → bind node id B9 │
+              │          │  • drop verb ∉ manifest    D3  │
+              │          │  • default_speak floor if none │
+              │          └─────┬──────────────────────────┘
+              │                │ SubTask[]
+              │          ┌─────▼──────────┐
+              │          │ executor       │  ◀── body seam (MockBody / real)
+              │          │ dispatch()     │
+              │          └─────┬──────────┘
+              ▼                ▼
+           Answer          StatusUpdate[]   →   HandleResult
+```
+
+**Reads:** Stage 1 = LLM (intent + verb sequence). Stage 2 = rules
+(`compile_commands`, pure). The only non-LLM *degradation* anywhere in the stack
+is in `tempomem.query` (semantic→keyword when no encoder, BYO contract) — the
+**planning chain has none**. The `Scripted*` classes are test doubles only; the
+online `Brain` is wired with `Verbalizer*`.
 
 ## 2. Three ratified adaptations
 

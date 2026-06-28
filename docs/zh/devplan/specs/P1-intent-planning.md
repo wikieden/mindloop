@@ -20,7 +20,49 @@ LLM → CommandSequence{commands: list[str]}        # 紧凑文本动词行
 
 LLM 只出**紧凑文本动词序列**（直观、省 token、schema 稳、不易幻觉）；**确定性
 编译器**按动词查表填结构化字段（skill/preconditions/effects/timeout）。序列以
-告知用户的话结尾。LLM 不可用 → 回退硬编码序列。
+告知用户的话结尾。
+
+## 1a. 控制流 —— LLM 决策、规则编译（规划链无规则回退）
+
+分工是 **Stage 1 走 LLM、Stage 2 走规则**，**不是**"LLM 不行就回退到规则规划"。
+线上规划**永远是 LLM**；规则层只是确定性**后处理**（填 schema + 安全 gate），
+绝不当替补规划器。（B2R 的"LLM 不可用 → 硬编码序列"那条路径**未采用**——我们没有
+预置 plan；LLM 空回复 = 空 plan，安全。）
+
+```
+                    instruction
+                        │
+              ┌─────────▼──────────┐
+              │  IntentRouter      │  ◀── LLM   (VerbalizerIntentRouter)
+              │  classify()        │      task / question / chat
+              └───┬────────────┬───┘
+        question/ │            │ task
+          chat    │            │
+        ┌─────────▼──┐   ┌─────▼──────────┐
+        │ ask()      │   │  Planner       │ ◀── LLM   (VerbalizerPlanner)
+        │ 检索→推理   │   │  plan()        │     出**文本**动词行
+        │ (LLM)      │   └─────┬──────────┘     "navigate table / grasp mug / speak …"
+        └─────┬──────┘         │
+              │          ┌─────▼──────────────────────────┐
+              │          │  compile_commands()            │ ◀── 规则（确定性）
+              │          │  • _VERB_TABLE → skill/pre/eff │     零 LLM
+              │          │  • mem.query → 绑 node id   B9  │
+              │          │  • 丢弃本体不支持的动词     D3  │
+              │          │  • 无 speak 则补 default_speak │
+              │          └─────┬──────────────────────────┘
+              │                │ SubTask[]
+              │          ┌─────▼──────────┐
+              │          │ executor       │  ◀── 本体 seam (MockBody / 真机)
+              │          │ dispatch()     │
+              │          └─────┬──────────┘
+              ▼                ▼
+           Answer          StatusUpdate[]   →   HandleResult
+```
+
+**要点：** Stage 1 = LLM（意图 + 动词序列）；Stage 2 = 规则（`compile_commands`，
+纯函数）。整个栈里唯一的**非 LLM 退化**在 `tempomem.query`（没配 encoder 时
+语义→关键词，BYO 契约）——**规划链没有任何退化**。`Scripted*` 类只是测试桩；线上
+`Brain` 注入的是 `Verbalizer*`。
 
 ## 2. 三处 ratified 适配
 
