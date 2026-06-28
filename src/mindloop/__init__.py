@@ -21,7 +21,14 @@ from .episteme import (
     load_cards,
 )
 from .errors import BrainError
-from .eval import CitationReport, citation_compliance
+from .eval import (
+    CitationReport,
+    EvalCase,
+    EvalReport,
+    EvalThresholds,
+    citation_compliance,
+    run_eval,
+)
 from .execute import (
     BodyProfile,
     CapabilityManifest,
@@ -77,6 +84,9 @@ __all__ = [
     "CosmosReasonVerbalizer",
     "DictPreferenceStore",
     "ErrorCode",
+    "EvalCase",
+    "EvalReport",
+    "EvalThresholds",
     "ExecutorAdapter",
     "FailoverVerbalizer",
     "HandleResult",
@@ -123,5 +133,6 @@ __all__ = [
     "load_cards",
     "parse_commands",
     "refusal_speak",
+    "run_eval",
     "strip_reasoning",
 ]

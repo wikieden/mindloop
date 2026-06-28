@@ -83,7 +83,7 @@ P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ✅ ─
 | P3 | Phylax policy tier | M-L3.2 | ✅ |
 | P4 | L4 Trace + replanning | M-L3.3 | ✅ |
 | P5 | Dialogue + full S2 loop | M-L3.3 | ✅ |
-| P6 | Production reasoner + eval + cloud bootstrap | M-L3.4 | ▢ |
+| P6 | Production reasoner + eval + cloud bootstrap | M-L3.4 | ◐ eval done |
 | P7 | Edge fallback — on-body offline AI chain (LLM+ASR+TTS) | M-L3.5 | ◐ P7.1 done |
 
 ---
@@ -160,16 +160,19 @@ turn + records it. **Closes M-L3.3** with an end-to-end scenario test: one
 conversation through question → task-success → task-replan→recover →
 task-safety-blocked, fully cited + traced, no real network.
 
-### P6 — Production reasoner + eval + cloud bootstrap  ·  ▢  ·  M-L3.4  ·  B6
+### P6 — Production reasoner + eval + cloud bootstrap  ·  ◐ (eval harness done)  ·  M-L3.4  ·  B6
 
 **Goal:** swap ScriptedReasoner for a real LLM; measure; deploy.
 
-- Wire `CosmosReasonVerbalizer` as the S2 reasoner end-to-end (done ad-hoc in P1
-  validation; make it the standard loop).
-- Eval harness: planning accuracy, citation compliance, policy compliance, replan
-  success rate. **Define concrete thresholds** (open item §8) — only the B2 latency
-  budget (query 100–500 ms, simple task 0.5–2 s) is set today.
-- Cloud bootstrap → onboard Thor via `base_url` switch (B6), protocol unchanged.
+- **✅ Eval harness** (`eval.py`, network-free) — `run_eval` scores planning
+  accuracy, policy compliance, replan success, citation compliance against scripted
+  scenarios; `EvalThresholds` proposes pass bars (§8). The objective scaffolding is
+  in place; it runs against any wired reasoner.
+- **▢** Wire `CosmosReasonVerbalizer` as the standard S2 reasoner end-to-end (done
+  ad-hoc in P1 validation) — needs the host endpoint live.
+- **▢** Cloud bootstrap → onboard Thor via `base_url` switch (B6) — needs hardware.
+
+Latency budget (B2): query 100–500 ms, simple task 0.5–2 s.
 
 **Exit:** production reasoner drives the full loop; eval thresholds met; cloud → Thor
 switch verified.
@@ -250,7 +253,7 @@ reasoner + eval).
 | **D2: L4 trace → tempomem core merge** | deferred (2026-06-28) | built in mindloop; core merge is a future coordinated cross-repo change. Don't lose this. |
 | **Module naming** (Episteme/Phylax/Hexis) | adopted | shipped as module names without a separate owner sign-off; revisit if undesired |
 | **Phylax FMEA** | open (inherited) | policy enumerated from B2R hard-constraints, not from a failure-mode analysis |
-| **P6 eval thresholds** | undefined | only the B2 latency budget is set; accuracy/compliance targets TBD |
+| **P6 eval thresholds** | proposed | `EvalThresholds` defaults: planning ≥0.9, policy =1.0, replan ≥0.8, intent ≥0.95 — owner to ratify |
 | **negation_constraints SubTask field** | not added | P4 didn't need it; add if full B2R replan parity is wanted |
 | **bodylink → own repo/submodule** | pending | needs owner go-ahead (outward action) |
 | **D3 body track** (real HW adapter, BT/reflex Phylax tiers) | pending | tracked in bodylink design doc + TECH-DESIGN, not phased here |

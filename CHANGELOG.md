@@ -8,6 +8,16 @@ follow SemVer (pre-1.0, the API may change between minor releases).
 
 ### Added
 
+- **Scenario eval harness (P6, network-free half)** — `eval.py`: `run_eval(brain,
+  cases)` scores the brain's behavior against scripted `EvalCase`s with no real LLM,
+  on the four metrics the dev plan names — **planning accuracy** (dispatched verb
+  sequence matches), **policy compliance** (Phylax blocks exactly what should be),
+  **replan success** (recoverable failures recover), and **citation compliance**
+  (existing). `EvalReport` scores each dimension independently (an un-exercised
+  dimension passes vacuously) and lists mismatches for triage; `EvalThresholds` are
+  the proposed pass bars (planning ≥0.9, policy =1.0, replan ≥0.8, intent ≥0.95 —
+  owner to ratify). The real-Cosmos drive + cloud→Thor switch (the rest of P6) need
+  the host endpoint / hardware.
 - **Dialogue + full S2 loop (P5, M-L3.3, D2)** — closes M-L3.3. `dialogue.py`:
   `Conversation` carries turn history; `Brain.converse(instruction, conversation,
   *, person=, safety_context=)` runs `handle` with the recent turns threaded into
