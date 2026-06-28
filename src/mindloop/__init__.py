@@ -69,6 +69,7 @@ from .reason import Answer, Reasoner, ScriptedReasoner, ToolCall, VerbalizerReas
 from .replan import ReplanAction, ReplanDecision, Replanner
 from .trace import TraceRecord, TraceStore
 from .verbalizers import CosmosReasonVerbalizer, FailoverVerbalizer, strip_reasoning
+from .voice import Listener, MockListener, MockSpeaker, Speaker, VoiceLoop, reply_text
 
 __version__ = "0.1.0a0"
 
@@ -92,6 +93,9 @@ __all__ = [
     "HandleResult",
     "HealthReport",
     "IntentRouter",
+    "Listener",
+    "MockListener",
+    "MockSpeaker",
     "Phylax",
     "Plan",
     "Planner",
@@ -114,6 +118,7 @@ __all__ = [
     "SkillCardPlanner",
     "SkillLibrary",
     "SkillStep",
+    "Speaker",
     "StatusUpdate",
     "SubTask",
     "TaskStatus",
@@ -126,6 +131,7 @@ __all__ = [
     "VerbalizerPlanner",
     "VerbalizerReasoner",
     "Violation",
+    "VoiceLoop",
     "citation_compliance",
     "compile_commands",
     "extract_slots",
@@ -133,6 +139,7 @@ __all__ = [
     "load_cards",
     "parse_commands",
     "refusal_speak",
+    "reply_text",
     "run_eval",
     "strip_reasoning",
 ]

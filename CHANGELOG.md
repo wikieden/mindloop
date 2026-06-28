@@ -8,6 +8,16 @@ follow SemVer (pre-1.0, the API may change between minor releases).
 
 ### Added
 
+- **Voice seams + loop (P7.2, edge fallback)** — `voice.py`: `Listener` (ASR) +
+  `Speaker` (TTS) BYO protocols (the ears + mouth, same pattern as
+  `ExecutorAdapter`), with `MockListener`/`MockSpeaker` doubles, and `VoiceLoop`
+  that ties them to `Brain.converse` (hear → think → speak) over a shared
+  `Conversation`. A silent transcription is a no-op (the brain never acts on a
+  misheard nothing); the spoken reply is the `Answer` text or the plan's `speak`
+  (incl. a Phylax refusal). Network-free — audio is opaque `bytes`, mocks script
+  the transcript / record utterances; real on-body engines (whisper.cpp /
+  sherpa-onnx; piper / Qwen3-TTS) stay out-of-tree (P7.3). Realizes the recommended
+  D-edge-2 design (additive/reversible; owner ratification stands open).
 - **Scenario eval harness (P6, network-free half)** — `eval.py`: `run_eval(brain,
   cases)` scores the brain's behavior against scripted `EvalCase`s with no real LLM,
   on the four metrics the dev plan names — **planning accuracy** (dispatched verb

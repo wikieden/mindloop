@@ -75,7 +75,7 @@ P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ✅ ─
 | P4 | L4 痕迹 + 重规划 | M-L3.3 | ✅ |
 | P5 | 对话 + 完整 S2 回路 | M-L3.3 | ✅ |
 | P6 | 生产推理器 + 评测 + 云启动 | M-L3.4 | ◐ 评测完成 |
-| P7 | 边缘回退 —— 本体离线 AI 链路（LLM+ASR+TTS） | M-L3.5 | ◐ P7.1 完成 |
+| P7 | 边缘回退 —— 本体离线 AI 链路（LLM+ASR+TTS） | M-L3.5 | ◐ P7.1+P7.2 完成 |
 
 ---
 
@@ -161,7 +161,8 @@ P5 给它包上**多轮对话**（`dialogue.py` —— `Conversation` 把近期�
 
 - **P7.1 ✅** —— `FailoverVerbalizer`：包 `[远端, 本体]` Verbalizer；遇 `QueryError` 回落本地
   服务，基于调用计数滞回。复用 `Verbalizer` seam → 覆盖 Reasoner + Planner/IntentRouter，**大脑零改动**。
-- **P7.2 ▢** —— `Listener`（ASR）+ `Speaker`（TTS）BYO seam + 薄 `voice.py` 回路。
+- **P7.2 ✅** —— `Listener`（ASR）+ `Speaker`（TTS）BYO seam + `Mock*` + 薄 `voice.py`
+  `VoiceLoop`（听→想→说）。网络隔离。
 - **P7.3 ▢** —— 接选定边缘栈（**Qwen 对齐**：Reasoner=Cosmos-Reason2，Planner=Qwen3.x-8B，
   ASR=Qwen3-ASR，TTS=Qwen3-TTS）于 Jetson Thor/Orin；验证。
 - **P7.4 ▢** —— 降级契约 + 模式 telemetry + "我离线了" UX。

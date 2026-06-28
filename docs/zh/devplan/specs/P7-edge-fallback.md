@@ -118,7 +118,7 @@ sherpa-onnx）。说 `Answer.text`、`plan.speak`、Phylax `refusal_speak`。`Mo
 | 步 | 交付 |
 |---|---|
 | P7.1 ✅ | `FailoverVerbalizer`（LLM failover，基于调用计数的滞回；无网络测试）—— 2026-06-28 完成。`ConnectivityMonitor` 暂折叠进 wrapper 的 cooldown |
-| P7.2 | `Listener` / `Speaker` 协议 + `Mock*` + 语音回路 |
+| P7.2 ✅ | `Listener` / `Speaker` BYO 协议 + `Mock*` + `VoiceLoop`（听→想→说）—— 2026-06-28 完成；`voice.py`，网络隔离 |
 | P7.3 | 参考本体引擎接入（边缘服务 + ASR + TTS），硬件验证 |
 | P7.4 | 降级契约 + 模式 telemetry + "离线" UX |
 

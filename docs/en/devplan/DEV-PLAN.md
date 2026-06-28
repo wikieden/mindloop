@@ -84,7 +84,7 @@ P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ✅ ─
 | P4 | L4 Trace + replanning | M-L3.3 | ✅ |
 | P5 | Dialogue + full S2 loop | M-L3.3 | ✅ |
 | P6 | Production reasoner + eval + cloud bootstrap | M-L3.4 | ◐ eval done |
-| P7 | Edge fallback — on-body offline AI chain (LLM+ASR+TTS) | M-L3.5 | ◐ P7.1 done |
+| P7 | Edge fallback — on-body offline AI chain (LLM+ASR+TTS) | M-L3.5 | ◐ P7.1+P7.2 done |
 
 ---
 
@@ -189,7 +189,8 @@ fallback**, never losing safety or memory (both already local).
 - **P7.1 ✅** — `FailoverVerbalizer`: wraps `[remote, on-body]` Verbalizers; falls to
   the local server on `QueryError` with call-based hysteresis. Reuses the
   `Verbalizer` seam → covers Reasoner + Planner/IntentRouter, **no brain change**.
-- **P7.2 ▢** — `Listener` (ASR) + `Speaker` (TTS) BYO seams + a thin `voice.py` loop.
+- **P7.2 ✅** — `Listener` (ASR) + `Speaker` (TTS) BYO seams + `Mock*` + a thin
+  `voice.py` `VoiceLoop` (hear→think→speak). Network-free.
 - **P7.3 ▢** — wire the chosen edge stack (**Qwen-aligned**: Reasoner=Cosmos-Reason2,
   Planner=Qwen3.x-8B, ASR=Qwen3-ASR, TTS=Qwen3-TTS) on Jetson Thor/Orin; validate.
 - **P7.4 ▢** — degradation contract + mode telemetry + "I'm offline" UX.
