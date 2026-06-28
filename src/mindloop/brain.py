@@ -17,19 +17,20 @@ from typing import TYPE_CHECKING, Any
 from .dialogue import Conversation
 from .episteme import manifest_param_keys
 from .errors import BrainError
+from .execute import StatusUpdate, TaskStatus
 from .health import HealthReport
 from .phylax import refusal_speak
 from .plan import HandleResult, Plan, compile_commands
 from .reason import Answer, Reasoner
 from .replan import ReplanAction
 from .scene_context import DefaultSceneContextProvider, Focus
-from .world_state import WorldState
+from .world_state import WorldState, parse_effect
 
 if TYPE_CHECKING:
     import numpy as np
     from tempomem import Detection, PerceptionAdapter, SpatialMemory
 
-    from .execute import CapabilityManifest, ExecutorAdapter, StatusUpdate, SubTask
+    from .execute import CapabilityManifest, ExecutorAdapter, SubTask
     from .phylax import Phylax, SafetyContext
     from .plan import IntentRouter, Planner
     from .preference import PreferenceStore
@@ -288,6 +289,14 @@ class Brain:
 
         statuses: list[StatusUpdate] = []
         for sub in plan.subtasks:
+            if self._already_satisfied(sub):
+                # idempotent skip (dynamic-scene P3): the world-state already shows
+                # this step's effects (e.g. a replan re-issued an already-done grasp)
+                # — don't re-dispatch. B2R e2e §P1: re-grasp needs an idempotency check.
+                st = self._skipped(sub)
+                self._record(sub, st, session)
+                statuses.append(st)
+                continue
             st = self._drain(sub)
             self._record(sub, st, session)
             if st.status.value == "failed" and self._replanner is not None:
@@ -328,6 +337,31 @@ class Brain:
         # result without re-perceiving.
         if st.status.value == "success":
             self._world.apply(sub.effects)
+
+    def _already_satisfied(self, sub: SubTask) -> bool:
+        """True if every one of `sub`'s effects already holds in the world-state (P3).
+
+        Open-world + conservative: a step with no effects, or any effect we can't
+        parse, is **not** skippable (we only skip when we can positively confirm the
+        outcome is already in place). Prevents redoing completed work after a replan.
+        """
+        if not sub.effects:
+            return False
+        parsed = [parse_effect(s) for s in sub.effects]
+        if any(e is None for e in parsed):
+            return False
+        return all(self._world.get(e.key) == e.value for e in parsed if e is not None)
+
+    def _skipped(self, sub: SubTask) -> StatusUpdate:
+        """A synthetic terminal SUCCESS for an idempotently-skipped subtask."""
+        return StatusUpdate(
+            task_id="",
+            subtask_id=sub.id,
+            status=TaskStatus.SUCCESS,
+            progress=1.0,
+            touched_node_ids=sub.target_node_ids,
+            message="already satisfied (idempotent skip)",
+        )
 
     def _plan_context(self, instruction: str, *, manifest_verbs: list[str], k: int) -> str:
         """Build the planner's context: the relevant scene subgraph + the verb

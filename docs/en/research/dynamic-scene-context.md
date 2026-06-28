@@ -181,7 +181,10 @@ Then turn each on behind a flag.
    injected as a `WORLD STATE` block into the context. Precondition re-vet of the
    plan tail against it is the next refinement.
 3. **Version-gated re-serialize** — re-query fresh context on replan + on a
-   focus-touching `v#` bump.
+   focus-touching `v#` bump. **◐ partial (2026-06-28)** — execution-time staleness
+   handling landed: `Brain._dispatch_plan` **idempotently skips** a step the
+   world-state already satisfies (no redoing completed work after a replan). The
+   remaining bit is re-querying *fresh LLM context* to re-plan a stale tail.
 4. **Active perception** — an `observe` hook between steps / on uncertainty; the
    reasoner may request a re-look.
 

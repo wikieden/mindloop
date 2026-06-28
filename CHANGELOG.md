@@ -8,6 +8,14 @@ follow SemVer (pre-1.0, the API may change between minor releases).
 
 ### Added
 
+- **Idempotent dispatch (dynamic-scene, phase 3)** — `Brain._dispatch_plan` skips a
+  subtask whose `effects` the `WorldState` already satisfies (e.g. a replan
+  re-issued an already-done `grasp`), returning a synthetic "already satisfied"
+  SUCCESS without re-dispatching. Open-world + conservative: a step with no effects
+  or any unparseable effect is never skipped (only positively-confirmed outcomes
+  skip). Realizes the B2R e2e §P1 idempotency lesson systemically, using the P2
+  world-state version as the staleness gate. No false skips — distinct/no-effect
+  steps still dispatch.
 - **Effect write-back / `WorldState` overlay (dynamic-scene, phase 2)** —
   `world_state.py`: a fast symbolic `predicate → value` layer on top of the
   perceptual map. When a `SubTask` succeeds, its `effects` (`robot.holding=apple`,

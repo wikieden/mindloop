@@ -230,7 +230,7 @@ P5 给它包上**多轮对话**（`dialogue.py` —— `Conversation` 把近期�
 | **negation_constraints SubTask 字段** | 未加 | P4 不需要；要 B2R 重规划完全对等再加 |
 | **bodylink → 独立仓/子模块** | 待定 | 需 owner 放行（对外动作） |
 | **D3 本体轨**（真 HW adapter、BT/反射 Phylax 层） | 待定 | bodylink 设计文档 + TECH-DESIGN 追踪，此处未分期 |
-| **动态场景上下文**（主动感知） | 第 1–2 步完成 | `SceneContextProvider` seam + `WorldState` 效果回写已落；版本门控重查 / 主动感知是第 3–4 步 —— 见 research/dynamic-scene-context.md |
+| **动态场景上下文**（主动感知） | 第 1–2 步完成、3 部分 | `SceneContextProvider` seam + `WorldState` 回写 + 幂等派发已落；LLM 尾部重规划（第 3 步剩余）+ 主动感知（第 4 步）待做 —— 见 research/dynamic-scene-context.md |
 
 ---
 

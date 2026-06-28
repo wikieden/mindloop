@@ -162,6 +162,8 @@ class ActivePerception(Protocol):
    `world_state.py`：符号 `WorldState` 叠加层（mindloop，不动 tempomem 核心）存完成动作的
    `predicate=value` 事实，作 `WORLD STATE` 块注入 context。对其复检 plan 尾部前置条件是下一步细化。
 3. **版本门控重 serialize** —— 重规划时 + focus 触及的 `v#` 变化时重查新 context。
+   **◐ 部分（2026-06-28）** —— 执行时陈旧处理已落：`Brain._dispatch_plan` **幂等跳过**
+   world-state 已满足的步（重规划后不重做已完成工作）。剩下的是重查*新 LLM context* 重规划陈旧尾部。
 4. **主动感知** —— 步间/不确定时的 `observe` 钩子；reasoner 可请求重看。
 
 每步独立可发、网络隔离可测（脚本感知 + mock 地图版本）。
