@@ -265,7 +265,7 @@ reasoner + eval).
 | **negation_constraints SubTask field** | not added | P4 didn't need it; add if full B2R replan parity is wanted |
 | **bodylink → own repo/submodule** | pending | needs owner go-ahead (outward action) |
 | **D3 body track** (real HW adapter, BT/reflex Phylax tiers) | pending | tracked in bodylink design doc + TECH-DESIGN, not phased here |
-| **Dynamic scene context** (active perception) | phases 1–2 done, 3 partial | `SceneContextProvider` seam + `WorldState` write-back + idempotent dispatch landed; LLM tail-replan (rest of phase 3) + active perception (phase 4) remain — see research/dynamic-scene-context.md |
+| **Dynamic scene context** (active perception) | ✅ phases 1–4 done | seam + `WorldState` write-back + idempotent dispatch + active-perception tail re-plan — the perceive-act-update cycle is closed; see research/dynamic-scene-context.md |
 
 ---
 

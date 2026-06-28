@@ -8,6 +8,16 @@ follow SemVer (pre-1.0, the API may change between minor releases).
 
 ### Added
 
+- **Active perception + tail re-plan (dynamic-scene, phase 4 + phase 3 finish)** —
+  `active_perception.py`: an `ActivePerception` BYO seam (`perceive(step_index,
+  last_status) -> Detection[] | None`) + a `ScriptedPerception` double. `Brain(
+  active_perception=…, max_tail_replans=…)` calls it **between dispatched steps**;
+  fused detections bump the map (P1 version) and trigger a **bounded tail re-plan**
+  from fresh context — `_plan_task` re-queries the scene, now reflecting the
+  world-state (P2) and the new perception, and the already-done steps are dropped by
+  the idempotent skip (P3). Bounded by `max_tail_replans` (default 1) so a flapping
+  view can't loop; the corrective plan is re-vetted by Phylax (P3) before acting.
+  Completes the perceive-act-update cycle in docs/research/dynamic-scene-context.md.
 - **Idempotent dispatch (dynamic-scene, phase 3)** — `Brain._dispatch_plan` skips a
   subtask whose `effects` the `WorldState` already satisfies (e.g. a replan
   re-issued an already-done `grasp`), returning a synthetic "already satisfied"

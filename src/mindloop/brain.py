@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     import numpy as np
     from tempomem import Detection, PerceptionAdapter, SpatialMemory
 
+    from .active_perception import ActivePerception
     from .execute import CapabilityManifest, ExecutorAdapter, SubTask
     from .phylax import Phylax, SafetyContext
     from .plan import IntentRouter, Planner
@@ -64,6 +65,8 @@ class Brain:
         preferences: PreferenceStore | None = None,
         context_provider: SceneContextProvider | None = None,
         world_state: WorldState | None = None,
+        active_perception: ActivePerception | None = None,
+        max_tail_replans: int = 1,
         default_speak: str = "OK.",
     ) -> None:
         self._mem = mem
@@ -77,6 +80,10 @@ class Brain:
         # knows from completed actions, injected into context so a multi-step task
         # stays grounded without re-perceiving every step.
         self._world = world_state or WorldState()
+        # Optional active perception (dynamic-scene P4): re-looks between steps; fused
+        # detections can trigger a bounded tail re-plan from fresh context.
+        self._perception = active_perception
+        self._max_tail_replans = max(0, max_tail_replans)
         self._router = router
         self._planner = planner
         self._executor = executor
@@ -223,16 +230,7 @@ class Brain:
         if self._executor is None:
             raise BrainError("Brain.handle with a task intent needs executor= (a body)")
         manifest = self._executor.capabilities()
-        context = self._plan_context(instruction, manifest_verbs=sorted(manifest.verb_names()), k=k)
-        plan = compile_commands(
-            self._planner.plan(instruction, context),
-            self._mem,
-            manifest,
-            default_speak=self._default_speak,
-        )
-
-        if self._preferences is not None and person:
-            plan = self._overlay_preferences(plan, person, manifest)
+        plan = self._plan_task(instruction, manifest, person, k=k)
 
         if self._policy is not None:
             violations = self._policy.check(plan, safety_context)
@@ -242,10 +240,34 @@ class Brain:
                 blocked = replace(plan, speak=refusal_speak(violations))
                 return HandleResult(intent=intent, plan=blocked, violations=violations)
 
-        statuses, escalation = self._dispatch_plan(plan, safety_context)
+        statuses, escalation = self._dispatch_plan(
+            plan, instruction=instruction, manifest=manifest, person=person, k=k,
+            safety_context=safety_context,
+        )
         if escalation is not None:
             plan = replace(plan, speak=escalation)
         return HandleResult(intent=intent, plan=plan, statuses=statuses)
+
+    def _plan_task(
+        self, instruction: str, manifest: CapabilityManifest, person: str, *, k: int
+    ) -> Plan:
+        """Plan a task: LLM verb sequence → compile (D3/B9) → L5 preference overlay.
+
+        Re-runnable mid-execution (dynamic-scene P3/P4): a re-plan re-queries the
+        scene context, which now reflects completed-action effects (P2) and any
+        fresh perception (P4), so the new plan is grounded in the current world.
+        """
+        assert self._planner is not None  # guaranteed by handle's guard
+        context = self._plan_context(instruction, manifest_verbs=sorted(manifest.verb_names()), k=k)
+        plan = compile_commands(
+            self._planner.plan(instruction, context),
+            self._mem,
+            manifest,
+            default_speak=self._default_speak,
+        )
+        if self._preferences is not None and person:
+            plan = self._overlay_preferences(plan, person, manifest)
+        return plan
 
     def _overlay_preferences(
         self, plan: Plan, person: str, manifest: CapabilityManifest
@@ -273,30 +295,61 @@ class Brain:
         return replace(plan, subtasks=tuple(new_subs)) if changed else plan
 
     def _dispatch_plan(
-        self, plan: Plan, safety_context: SafetyContext | None
+        self,
+        plan: Plan,
+        *,
+        instruction: str,
+        manifest: CapabilityManifest,
+        person: str,
+        k: int,
+        safety_context: SafetyContext | None,
     ) -> tuple[tuple[StatusUpdate, ...], str | None]:
-        """Dispatch each subtask, repairing failures via the replanner (P4).
+        """Dispatch the plan, with failure repair (P4) + active-perception re-plan (P4-dyn).
 
-        Without a `replanner`, this is the P1-P3 behavior (dispatch each subtask
-        once). With one, a `FAILED` terminal is fed to `Replanner.replan` and the
-        bounded corrective sequence is dispatched in its place; an escalation stops
-        the plan and returns a `speak`. Every attempt is logged to the trace.
+        Per step, in order: (1) **active perception** may re-look (`perceive`) — fused
+        detections bump the map and, bounded by `max_tail_replans`, trigger a **tail
+        re-plan** from fresh context; (2) **idempotent skip** of a step the world-state
+        already satisfies (P3); (3) dispatch, and on a typed `FAILED` feed the
+        `Replanner` (P4) — an escalation stops the plan with a `speak`.
         """
         if self._replanner is not None:
             self._replanner.reset()  # new task: counters reset, trace untouched
         self._session_n += 1
         session = f"s{self._session_n}"
 
+        subs = list(plan.subtasks)
         statuses: list[StatusUpdate] = []
-        for sub in plan.subtasks:
+        replans = 0
+        i = 0
+        while i < len(subs):
+            sub = subs[i]
+
+            # (1) active perception (dynamic-scene P4) — re-look between steps
+            if self._perception is not None and replans < self._max_tail_replans:
+                last = statuses[-1] if statuses else None
+                dets = self._perception.perceive(step_index=i, last_status=last)
+                if dets:
+                    self.ingest(dets)  # fuse → map version bump
+                    replans += 1
+                    new_plan = self._plan_task(instruction, manifest, person, k=k)
+                    if self._policy is not None:
+                        viol = self._policy.check(new_plan, safety_context)
+                        if viol:
+                            return tuple(statuses), refusal_speak(viol)
+                    # splice the fresh tail in place of the remaining steps; already-done
+                    # steps are dropped by the idempotent skip below
+                    subs = subs[:i] + list(new_plan.subtasks)
+                    continue
+
+            # (2) idempotent skip (dynamic-scene P3)
             if self._already_satisfied(sub):
-                # idempotent skip (dynamic-scene P3): the world-state already shows
-                # this step's effects (e.g. a replan re-issued an already-done grasp)
-                # — don't re-dispatch. B2R e2e §P1: re-grasp needs an idempotency check.
                 st = self._skipped(sub)
                 self._record(sub, st, session)
                 statuses.append(st)
+                i += 1
                 continue
+
+            # (3) dispatch + typed-failure repair (P4)
             st = self._drain(sub)
             self._record(sub, st, session)
             if st.status.value == "failed" and self._replanner is not None:
@@ -305,6 +358,7 @@ class Brain:
                     statuses.append(st)
                     return tuple(statuses), escalation  # safety-class stop: end plan
             statuses.append(st)
+            i += 1
         return tuple(statuses), None
 
     def _repair(

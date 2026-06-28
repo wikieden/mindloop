@@ -162,8 +162,10 @@ class ActivePerception(Protocol):
    `world_state.py`：符号 `WorldState` 叠加层（mindloop，不动 tempomem 核心）存完成动作的
    `predicate=value` 事实，作 `WORLD STATE` 块注入 context。对其复检 plan 尾部前置条件是下一步细化。
 3. **版本门控重 serialize** —— 重规划时 + focus 触及的 `v#` 变化时重查新 context。
-   **◐ 部分（2026-06-28）** —— 执行时陈旧处理已落：`Brain._dispatch_plan` **幂等跳过**
-   world-state 已满足的步（重规划后不重做已完成工作）。剩下的是重查*新 LLM context* 重规划陈旧尾部。
-4. **主动感知** —— 步间/不确定时的 `observe` 钩子；reasoner 可请求重看。
+   **✅ 已完成（2026-06-28）** —— `Brain._dispatch_plan` **幂等跳过** world-state 已满足的步
+   （不重做已完成工作），且重看触发**从新 context 重规划尾部**（`_plan_task` 重查活地图 + world-state）。
+4. **主动感知** —— **✅ 已完成（2026-06-28）** —— `active_perception.py`：`ActivePerception`
+   seam 步间重看；融合的检测 bump 地图，并在 `max_tail_replans` 界内重规划尾部。reasoner 请求重看
+   后续接同一 seam。
 
-每步独立可发、网络隔离可测（脚本感知 + mock 地图版本）。
+每步独立可发、网络隔离可测（脚本感知 + mock 地图版本）。**四步全落，感知-行动-更新回路端到端闭合。**

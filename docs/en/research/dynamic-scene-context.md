@@ -181,12 +181,15 @@ Then turn each on behind a flag.
    injected as a `WORLD STATE` block into the context. Precondition re-vet of the
    plan tail against it is the next refinement.
 3. **Version-gated re-serialize** — re-query fresh context on replan + on a
-   focus-touching `v#` bump. **◐ partial (2026-06-28)** — execution-time staleness
-   handling landed: `Brain._dispatch_plan` **idempotently skips** a step the
-   world-state already satisfies (no redoing completed work after a replan). The
-   remaining bit is re-querying *fresh LLM context* to re-plan a stale tail.
-4. **Active perception** — an `observe` hook between steps / on uncertainty; the
-   reasoner may request a re-look.
+   focus-touching `v#` bump. **✅ done (2026-06-28)** — `Brain._dispatch_plan`
+   **idempotently skips** a step the world-state already satisfies (no redoing
+   completed work), and a re-look triggers a **tail re-plan from fresh context**
+   (`_plan_task` re-queries the live map + world-state).
+4. **Active perception** — **✅ done (2026-06-28)** — `active_perception.py`: an
+   `ActivePerception` seam re-looks between steps; fused detections bump the map and,
+   bounded by `max_tail_replans`, re-plan the tail. Reasoner-requested re-look slots
+   into the same seam later.
 
-Each step is independently shippable and network-free testable (scripted
-perception + a mock map version).
+Each step is independently shippable and network-free testable (scripted perception
++ a mock map version). **All four phases landed; the perceive-act-update cycle is
+closed end-to-end.**

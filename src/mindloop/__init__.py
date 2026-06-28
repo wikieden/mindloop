@@ -8,6 +8,7 @@ ships only the `Verbalizer` protocol + `answer()` seam.
 
 from __future__ import annotations
 
+from .active_perception import ActivePerception, ScriptedPerception
 from .brain import Brain
 from .dialogue import Conversation, Turn
 from .episteme import (
@@ -76,6 +77,7 @@ from .world_state import Effect, EffectApplier, WorldState, parse_effect
 __version__ = "0.1.0a0"
 
 __all__ = [
+    "ActivePerception",
     "Answer",
     "BodyProfile",
     "Brain",
@@ -118,6 +120,7 @@ __all__ = [
     "SafetyContext",
     "SceneContextProvider",
     "ScriptedIntentRouter",
+    "ScriptedPerception",
     "ScriptedPlanner",
     "ScriptedReasoner",
     "Severity",
