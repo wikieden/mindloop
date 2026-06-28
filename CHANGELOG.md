@@ -8,6 +8,20 @@ follow SemVer (pre-1.0, the API may change between minor releases).
 
 ### Added
 
+- **Dialogue + full S2 loop (P5, M-L3.3, D2)** — closes M-L3.3. `dialogue.py`:
+  `Conversation` carries turn history; `Brain.converse(instruction, conversation,
+  *, person=, safety_context=)` runs `handle` with the recent turns threaded into
+  `ask` (a follow-up resolves against prior turns — dialogue-grounded *and*
+  memory-grounded) and records the turn. **L5 preference overlay** — `PreferenceStore`
+  gains `all(person)` + a concrete `DictPreferenceStore`; `Brain(preferences=…)` +
+  `handle(..., person=…)` overlays a person's preferences onto a compiled task
+  plan's params **after compile, manifest-gated** (a preference wins over a card
+  default but can't inject a param the body doesn't declare), so it applies to LLM
+  and skill-card plans alike with no `Planner`-protocol change. The single-turn loop
+  is unchanged; dialogue + preferences are opt-in. Validated by an end-to-end
+  scenario test (one conversation: question → task-success → task-replan→recover →
+  task-safety-blocked, fully cited + traced, no network). See
+  docs/devplan/specs/P5-dialogue-full-loop.md.
 - **L4 trace + failure-driven replanning (P4, M-L3.3, D2/B3)** — `trace.py` +
   `replan.py`. `TraceStore` is an append-only stdlib-sqlite episodic log of every
   dispatched attempt + failure, each citing tempomem **node ids** (B9) so it is

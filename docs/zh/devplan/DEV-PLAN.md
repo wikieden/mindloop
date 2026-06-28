@@ -10,8 +10,8 @@
 B1–B10（§11，2026-06-11 拍板）。每阶段**先参考对应 Brain2Robot 设计文档**（长期指令 ——
 B2R 是原型产品）。
 
-**状态（2026-06-28 更新）：** P0–P4 已发 + P7.1 已发。**M-L3.1 ✅、M-L3.2 ✅、M-L3.3 半
-（P4 ✅，P5 下一个）。** 每阶段先写 spec、验证后才算 done。大脑测试套：81 个网络隔离测试，
+**状态（2026-06-28 更新）：** P0–P5 已发 + P7.1 已发。**M-L3.1 ✅、M-L3.2 ✅、M-L3.3 ✅**
+（完整 S2 回路端到端复现）。每阶段先写 spec、验证后才算 done。大脑测试套：85 个网络隔离测试，
 ruff 清，pyright 0。
 
 ---
@@ -44,9 +44,11 @@ ruff 清，pyright 0。
 | Episteme 技能卡库 | ✅ **P2** | `episteme.py` |
 | Phylax 语义策略层 | ✅ **P3** | `phylax.py` |
 | L4 痕迹 + 有界重规划 | ✅ **P4** | `trace.py`, `replan.py` |
+| 多轮对话 + L5 偏好叠加（完整回路端到端复现） | ✅ **P5 / M-L3.3** | `dialogue.py`, `preference.py`, `brain.py` |
 | Reasoner/planner LLM failover（离线 AI 链路第 1 步） | ✅ **P7.1** | `verbalizers.py` |
 
-**下一个：** **P5**（对话 + 完整 S2 回路 —— 复现 B2R 端到端场景）。
+**下一个：** **P6**（把 ScriptedReasoner 换成生产 Cosmos-Reason2 + 评测 harness；云→Thor 切换）。
+P7.2+ 与 D3 本体轨并行。
 
 > **并行 D3 本体适配轨**（在 `bodylink`，不在本大脑计划）：多机型 manifest 目录
 > （g1d/h1/gr1/arm6）、`BaseExecutorAdapter` SDK、一致性套件、Genesis 物理仿真 backend
@@ -59,7 +61,7 @@ ruff 清，pyright 0。
 ## 2. 阶段图
 
 ```
-P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ▢ ─► P6 ▢          P7 ▢ (P7.1 ✅)
+P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ✅ ─► P6 ▢          P7 ▢ (P7.1 ✅)
  seam     S2 脊柱   技能     策略    痕迹+    完整     生产          边缘回退
                                     重规划    回路    (LLM+eval)    (离线链路)
 ```
@@ -71,7 +73,7 @@ P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ▢ ─
 | P2 | Episteme 技能卡库 | M-L3.2 | ✅ |
 | P3 | Phylax 策略层 | M-L3.2 | ✅ |
 | P4 | L4 痕迹 + 重规划 | M-L3.3 | ✅ |
-| P5 | 对话 + 完整 S2 回路 | M-L3.3 | ▢ 下一个 |
+| P5 | 对话 + 完整 S2 回路 | M-L3.3 | ✅ |
 | P6 | 生产推理器 + 评测 + 云启动 | M-L3.4 | ▢ |
 | P7 | 边缘回退 —— 本体离线 AI 链路（LLM+ASR+TTS） | M-L3.5 | ◐ P7.1 完成 |
 
@@ -127,16 +129,14 @@ provenance）按 `SafetyContext` 经 `Phylax.check` 审，在 `handle()` 里 com
   SKIP / ESCALATE。上限：每(verb,node) ≤2 + 全局 ≤6 → 触顶升级（停+说，无死循环）。
   `Brain(replanner=, trace=)` 把派发变有界重规划回路；修复序列派发前**经 Phylax(P3) 重审**。
 
-### P5 —— 对话 + 完整 S2 回路  ·  ▢ 下一个  ·  M-L3.3
+### P5 —— 对话 + 完整 S2 回路  ·  ✅ DONE (2026-06-28)  ·  M-L3.3
 
-**目标：** 对 MockBody（可选 Genesis 仿真）端到端跑完整认知回路。关 M-L3.3。
-
-- 对话引擎 —— 记忆接地多轮 chat（扩 `ask`）。
-- 完整回路串成一个场景：instruction → route → plan → policy → dispatch → status → replan → trace。
-- L5 `PreferenceStore` 叠加 —— 偏好按人改卡片默认。
-
-**B2R 参考：** `05_scenarios/breakfast_e2e.md`、`e2e_walkthrough.md`。
-**出口：** 一个 B2R 端到端家庭场景在完整 S2 回路对 MockBody 跑通，全引用+全痕迹、无真网络。
+**Spec：** [specs/P5-dialogue-full-loop.md](specs/P5-dialogue-full-loop.md)。回路 P4 时已串通；
+P5 给它包上**多轮对话**（`dialogue.py` —— `Conversation` 把近期轮次穿进 `ask`，让追问对前文解析）
+和 **L5 偏好叠加**（`PreferenceStore.all` + 具体 `DictPreferenceStore`；`Brain.handle(person=)`
+把某人偏好叠到编译后 plan 的 params、manifest 门控）。`Brain.converse` 跑一轮并记录。**关 M-L3.3**
+—— 端到端场景测试：一段对话走 问答 → 任务成功 → 任务重规划→恢复 → 任务安全阻断，全引用+全痕迹、
+无真网络。
 
 ### P6 —— 生产推理器 + 评测 + 云启动  ·  ▢  ·  M-L3.4  ·  B6
 
@@ -175,7 +175,7 @@ provenance）按 `SafetyContext` 经 `Phylax.check` 审，在 `handle()` 里 com
 |---|---|---|---|
 | **M-L3.1** | P1 | ✅ | instruction → 带引用动词 plan → MockBody 派发 |
 | **M-L3.2** | P2 + P3 | ✅ | 技能卡跑通；每个 plan 经策略检查 |
-| **M-L3.3** | P4 + P5 | ◐ (P4 ✅) | 完整 S2 回路带痕迹+重规划；复现 B2R 场景 |
+| **M-L3.3** | P4 + P5 | ✅ | 完整 S2 回路带痕迹+重规划；端到端场景复现 |
 | **M-L3.4** | P6 | ▢ | 真 Cosmos-Reason2 + 评测达标 + 云→Thor |
 | **M-L3.5** | P7 | ◐ (P7.1 ✅) | 拔网 —— 机器人仍听到、规划、过 gate、动作、说话，全本体 |
 
@@ -206,8 +206,8 @@ provenance）按 `SafetyContext` 经 `Phylax.check` 审，在 `handle()` 里 com
 ## 7. 排序
 
 `P0 → P1 → (P2 ∥ P3) → P4 → P5 → P6`，**P7 横切**（P7.1 应 owner 请求提前落；P7.2–7.4 卡在
-未决 §7-spec 决策）。D3 本体适配轨在 `bodylink` 并行。**P5 是关键路径下一步**（关 M-L3.3，
-首个全回路集成证明）。
+未决 §7-spec 决策）。D3 本体适配轨在 `bodylink` 并行。**P5 已关 M-L3.3**（首个全回路集成证明）；
+**P6 是关键路径下一步**（真 reasoner + 评测）。
 
 ---
 

@@ -13,9 +13,10 @@ backend) stands in for a body throughout L3 development.
 **consults the corresponding Brain2Robot design doc first** (standing directive —
 B2R is the prototype product).
 
-**Status (updated 2026-06-28):** P0–P4 shipped + P7.1 shipped. **M-L3.1 ✅,
-M-L3.2 ✅, M-L3.3 half (P4 ✅, P5 next).** Each phase is spec'd before coding and
-verified before "done". Brain suite: 81 network-free tests, ruff clean, pyright 0.
+**Status (updated 2026-06-28):** P0–P5 shipped + P7.1 shipped. **M-L3.1 ✅,
+M-L3.2 ✅, M-L3.3 ✅** (full S2 loop reproduced e2e). Each phase is spec'd before
+coding and verified before "done". Brain suite: 85 network-free tests, ruff clean,
+pyright 0.
 
 ---
 
@@ -51,9 +52,11 @@ verified before "done". Brain suite: 81 network-free tests, ruff clean, pyright 
 | Episteme skill-card library | ✅ **P2** | `episteme.py` |
 | Phylax semantic policy tier | ✅ **P3** | `phylax.py` |
 | L4 trace + bounded replanning | ✅ **P4** | `trace.py`, `replan.py` |
+| Multi-turn dialogue + L5 preference overlay (full loop reproduced e2e) | ✅ **P5 / M-L3.3** | `dialogue.py`, `preference.py`, `brain.py` |
 | Reasoner/planner LLM failover (offline AI chain, step 1) | ✅ **P7.1** | `verbalizers.py` |
 
-**Next:** **P5** (dialogue + full S2 loop — reproduce a B2R e2e scenario).
+**Next:** **P6** (swap ScriptedReasoner for the production Cosmos-Reason2 + an eval
+harness; cloud→Thor switch). P7.2+ and the D3 body track run in parallel.
 
 > **Parallel D3 body-adaptation track** (in `bodylink`, not this brain plan):
 > multi-model manifest catalog (g1d/h1/gr1/arm6), `BaseExecutorAdapter` SDK,
@@ -67,7 +70,7 @@ verified before "done". Brain suite: 81 network-free tests, ruff clean, pyright 
 ## 2. Phase map
 
 ```
-P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ▢ ─► P6 ▢          P7 ▢ (P7.1 ✅)
+P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ✅ ─► P6 ▢          P7 ▢ (P7.1 ✅)
  seam     S2 spine  skills   policy  trace+   full     production    edge fallback
                                      replan    loop     (LLM+eval)    (offline chain)
 ```
@@ -79,7 +82,7 @@ P0 ✅ ─► P1 ✅ ─► P2 ✅ ─► P3 ✅ ─► P4 ✅ ─► P5 ▢ ─
 | P2 | Episteme skill-card library | M-L3.2 | ✅ |
 | P3 | Phylax policy tier | M-L3.2 | ✅ |
 | P4 | L4 Trace + replanning | M-L3.3 | ✅ |
-| P5 | Dialogue + full S2 loop | M-L3.3 | ▢ next |
+| P5 | Dialogue + full S2 loop | M-L3.3 | ✅ |
 | P6 | Production reasoner + eval + cloud bootstrap | M-L3.4 | ▢ |
 | P7 | Edge fallback — on-body offline AI chain (LLM+ASR+TTS) | M-L3.5 | ◐ P7.1 done |
 
@@ -145,19 +148,17 @@ must-not"). `SkillCardPlanner` refuses untrusted `safety:` cards. Ports B2R
   infinite loop). `Brain(replanner=, trace=)` turns dispatch into a bounded replan
   loop; a corrective plan is **re-vetted by Phylax (P3)** before acting.
 
-### P5 — Dialogue + full S2 loop  ·  ▢ NEXT  ·  M-L3.3
+### P5 — Dialogue + full S2 loop  ·  ✅ DONE (2026-06-28)  ·  M-L3.3
 
-**Goal:** the complete cognitive loop, end-to-end, against MockBody (+ optionally the
-Genesis sim). Closes M-L3.3.
-
-- Dialogue engine — memory-grounded multi-turn chat (extends `ask`).
-- Full loop wired: instruction → route → plan → policy → dispatch → status → replan
-  → trace, as one scenario.
-- L5 `PreferenceStore` overlay — preferences modify card defaults per person.
-
-**B2R ref:** `05_scenarios/breakfast_e2e.md`, `e2e_walkthrough.md`.
-**Exit:** a B2R end-to-end household scenario runs on the full S2 loop with MockBody,
-fully cited + traced, no real network.
+**Spec:** [specs/P5-dialogue-full-loop.md](specs/P5-dialogue-full-loop.md). The loop
+was already wired through P4; P5 wraps it with **multi-turn dialogue** (`dialogue.py`
+— a `Conversation` threads recent turns into `ask` so follow-ups resolve against
+prior turns) and an **L5 preference overlay** (`PreferenceStore.all` + a concrete
+`DictPreferenceStore`; `Brain.handle(person=)` overlays a person's preferences onto
+the compiled plan's params, manifest-gated, post-compile). `Brain.converse` runs a
+turn + records it. **Closes M-L3.3** with an end-to-end scenario test: one
+conversation through question → task-success → task-replan→recover →
+task-safety-blocked, fully cited + traced, no real network.
 
 ### P6 — Production reasoner + eval + cloud bootstrap  ·  ▢  ·  M-L3.4  ·  B6
 
@@ -201,7 +202,7 @@ BYO seams (D-edge-2). **Edge stack: decided Qwen-aligned.**
 |---|---|---|---|
 | **M-L3.1** | P1 | ✅ | instruction → cited verb plan → MockBody dispatch |
 | **M-L3.2** | P2 + P3 | ✅ | skill cards run; every plan policy-checked |
-| **M-L3.3** | P4 + P5 | ◐ (P4 ✅) | full S2 loop with trace + replan; B2R scenario reproduced |
+| **M-L3.3** | P4 + P5 | ✅ | full S2 loop with trace + replan; e2e scenario reproduced |
 | **M-L3.4** | P6 | ▢ | real Cosmos-Reason2 + eval green + cloud→Thor |
 | **M-L3.5** | P7 | ◐ (P7.1 ✅) | pull the network — robot still hears, plans, gates, acts, speaks on-body |
 
@@ -236,8 +237,9 @@ BYO seams (D-edge-2). **Edge stack: decided Qwen-aligned.**
 
 `P0 → P1 → (P2 ∥ P3) → P4 → P5 → P6`, with **P7 cross-cutting** (P7.1 landed early
 on owner request; P7.2–7.4 gated on the open §7-spec decisions). The D3
-body-adaptation track runs in parallel in `bodylink`. **P5 is the critical-path
-next step** (closes M-L3.3, the first full-loop integration proof).
+body-adaptation track runs in parallel in `bodylink`. **P5 closed M-L3.3** (the
+first full-loop integration proof); **P6 is the critical-path next step** (real
+reasoner + eval).
 
 ---
 

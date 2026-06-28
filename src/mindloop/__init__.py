@@ -9,6 +9,7 @@ ships only the `Verbalizer` protocol + `answer()` seam.
 from __future__ import annotations
 
 from .brain import Brain
+from .dialogue import Conversation, Turn
 from .episteme import (
     Rule,
     SkillCard,
@@ -56,7 +57,7 @@ from .plan import (
     compile_commands,
     parse_commands,
 )
-from .preference import PreferenceStore
+from .preference import DictPreferenceStore, PreferenceStore
 from .reason import Answer, Reasoner, ScriptedReasoner, ToolCall, VerbalizerReasoner
 from .replan import ReplanAction, ReplanDecision, Replanner
 from .trace import TraceRecord, TraceStore
@@ -72,7 +73,9 @@ __all__ = [
     "CapabilityManifest",
     "CitationReport",
     "Command",
+    "Conversation",
     "CosmosReasonVerbalizer",
+    "DictPreferenceStore",
     "ErrorCode",
     "ExecutorAdapter",
     "FailoverVerbalizer",
@@ -107,6 +110,7 @@ __all__ = [
     "ToolCall",
     "TraceRecord",
     "TraceStore",
+    "Turn",
     "VerbSpec",
     "VerbalizerIntentRouter",
     "VerbalizerPlanner",

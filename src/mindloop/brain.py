@@ -14,6 +14,8 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
+from .dialogue import Conversation
+from .episteme import manifest_param_keys
 from .errors import BrainError
 from .health import HealthReport
 from .phylax import refusal_speak
@@ -25,9 +27,10 @@ if TYPE_CHECKING:
     import numpy as np
     from tempomem import Detection, PerceptionAdapter, SpatialMemory
 
-    from .execute import ExecutorAdapter, StatusUpdate, SubTask
+    from .execute import CapabilityManifest, ExecutorAdapter, StatusUpdate, SubTask
     from .phylax import Phylax, SafetyContext
     from .plan import IntentRouter, Planner
+    from .preference import PreferenceStore
     from .replan import Replanner
     from .trace import TraceStore
 
@@ -54,6 +57,7 @@ class Brain:
         policy: Phylax | None = None,
         replanner: Replanner | None = None,
         trace: TraceStore | None = None,
+        preferences: PreferenceStore | None = None,
         default_speak: str = "OK.",
     ) -> None:
         self._mem = mem
@@ -72,6 +76,9 @@ class Brain:
         # attempt/failure (L4 episodic, citing node ids). None ⇒ dispatch once.
         self._replanner = replanner
         self._trace = trace
+        # Optional L5 per-person preference store (P5/D2). When wired, a person's
+        # preferences overlay a compiled task plan's params (manifest-gated).
+        self._preferences = preferences
         self._session_n = 0
         # Floor utterance when a task plan dispatches but the planner LLM omitted
         # a `speak` line — guarantees user feedback even with a weak instruction
@@ -100,7 +107,7 @@ class Brain:
         self._mem.add_detections(detections, episode=episode)
         return self._mem.commit()
 
-    def ask(self, question: str, *, k: int = 64) -> Answer:
+    def ask(self, question: str, *, k: int = 64, dialogue: str = "") -> Answer:
         """Retrieve a query-relevant subgraph → reason → answer.
 
         Retrieves the top-`k` nodes for `question` and serializes that subgraph —
@@ -110,6 +117,9 @@ class Brain:
         the whole scene when nothing matches. `k` is deliberately generous so the
         token budget (not `k`) is the binding limit on a normal scene; an
         enumerative query over more than `k` same-label objects is capped at `k`.
+
+        `dialogue` (P5) is recent conversation history; when given it is prepended
+        to the reasoner context so a follow-up resolves against prior turns.
         """
         hits = self._mem.query(question, k=k)
         node_ids = {n.id for n in hits.nodes}
@@ -119,16 +129,47 @@ class Brain:
             )
         else:
             context = self._mem.serialize(format="prompt", max_tokens=self._budget)
+        if dialogue:
+            context = f"CONVERSATION (recent turns):\n{dialogue}\n\n{context}"
         return self._reasoner.reason(question, context)
+
+    def converse(
+        self,
+        instruction: str,
+        conversation: Conversation | None = None,
+        *,
+        k: int = 64,
+        person: str = "",
+        safety_context: SafetyContext | None = None,
+    ) -> HandleResult:
+        """Run one conversational turn (P5): `handle` with dialogue history, then record.
+
+        Threads `conversation`'s recent turns into `handle` (so question/chat turns
+        are dialogue-grounded) and appends the resulting turn. Pass a `Conversation`
+        you keep across turns; a fresh one is created (and the turn recorded into it)
+        if omitted.
+        """
+        conv = conversation if conversation is not None else Conversation()
+        result = self.handle(
+            instruction,
+            k=k,
+            person=person,
+            safety_context=safety_context,
+            dialogue=conv.history_text(),
+        )
+        conv.add(instruction, result)
+        return result
 
     def handle(
         self,
         instruction: str,
         *,
         k: int = 64,
+        person: str = "",
         safety_context: SafetyContext | None = None,
+        dialogue: str = "",
     ) -> HandleResult:
-        """The full S2 loop (P1+P3): route an instruction → answer or plan + dispatch.
+        """The full S2 loop (P1+P3+P4+P5): route an instruction → answer or plan + dispatch.
 
         `question`/`chat` route to `ask` (retrieve → reason → cited `Answer`). A
         `task` is planned into a verb `Command` sequence (B2R two-stage format),
@@ -145,7 +186,7 @@ class Brain:
 
         intent = self._router.classify(instruction)
         if intent in ("question", "chat"):
-            return HandleResult(intent=intent, answer=self.ask(instruction, k=k))
+            return HandleResult(intent=intent, answer=self.ask(instruction, k=k, dialogue=dialogue))
 
         if self._executor is None:
             raise BrainError("Brain.handle with a task intent needs executor= (a body)")
@@ -157,6 +198,9 @@ class Brain:
             manifest,
             default_speak=self._default_speak,
         )
+
+        if self._preferences is not None and person:
+            plan = self._overlay_preferences(plan, person, manifest)
 
         if self._policy is not None:
             violations = self._policy.check(plan, safety_context)
@@ -170,6 +214,31 @@ class Brain:
         if escalation is not None:
             plan = replace(plan, speak=escalation)
         return HandleResult(intent=intent, plan=plan, statuses=statuses)
+
+    def _overlay_preferences(
+        self, plan: Plan, person: str, manifest: CapabilityManifest
+    ) -> Plan:
+        """Overlay a person's L5 preferences onto each subtask's params (P5).
+
+        Preferences win over card/rule defaults, but only for the params the body
+        declares for that verb (manifest-gated — a preference can't inject an
+        unknown key). Returns the plan unchanged if nothing applies.
+        """
+        assert self._preferences is not None
+        prefs = self._preferences.all(person)
+        if not prefs:
+            return plan
+        new_subs: list[SubTask] = []
+        changed = False
+        for st in plan.subtasks:
+            known = manifest_param_keys(manifest, st.verb)
+            overlay = {k: v for k, v in prefs.items() if k in known}
+            if overlay:
+                new_subs.append(replace(st, params={**st.params, **overlay}))
+                changed = True
+            else:
+                new_subs.append(st)
+        return replace(plan, subtasks=tuple(new_subs)) if changed else plan
 
     def _dispatch_plan(
         self, plan: Plan, safety_context: SafetyContext | None
