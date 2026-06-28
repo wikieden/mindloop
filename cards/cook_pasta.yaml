@@ -1,0 +1,35 @@
+# Episteme skill card (P2) — cook pasta on the stove.
+# Demonstrates a cooking category + a doneness rule (al dente vs soft) overlaying
+# the cook time. Same six-verb G1-D vocabulary; the stove is driven via
+# operate_appliance (appliance_types includes "stove").
+id: cook_pasta
+category: pasta
+provenance: builtin
+preconditions:
+  - robot.canMove
+  - stove.reachable
+safety:
+  attended_only: true
+steps:
+  - verb: navigate
+    target: stove
+  - verb: grasp
+    target: pot
+  - verb: place
+    target: stove
+  - verb: operate_appliance
+    target: stove
+    params:
+      mode: boil
+      minutes: 10
+  - verb: speak
+    target: "Putting the pasta on to boil."
+rules:
+  - when: { doneness: aldente }
+    target_verb: operate_appliance
+    set_params: { minutes: 8 }
+  - when: { doneness: soft }
+    target_verb: operate_appliance
+    set_params: { minutes: 12 }
+failure_hints:
+  - If the water boils over, lower the heat and partially cover the pot.

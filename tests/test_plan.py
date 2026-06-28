@@ -75,9 +75,7 @@ def test_task_plans_then_dispatches_with_node_ids(mem: SpatialMemory) -> None:
 
 def test_unsupported_verb_is_dropped_not_dispatched(mem: SpatialMemory) -> None:
     # 'fly' is not in the G1-D manifest -> dropped (D3), never reaches the body
-    planner = ScriptedPlanner(
-        {"go": (Command("fly", ("bottle",)), Command("grasp", ("bottle",)))}
-    )
+    planner = ScriptedPlanner({"go": (Command("fly", ("bottle",)), Command("grasp", ("bottle",)))})
     brain = Brain(
         mem,
         ScriptedReasoner(),

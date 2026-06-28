@@ -130,9 +130,10 @@ with every object slot carrying a node id. ✅ Met — `plan.py` + `Brain.handle
 Cross-validated end-to-end against a live Cosmos-Reason2 vLLM endpoint
 (intent routing + LLM verb plan → node-bound dispatch + cited question answer).
 
-### P2 — Episteme skill-card library  ·  M-L3.2  ·  D3/§5, K2
+### P2 — Episteme skill-card library  ·  M-L3.2  ·  D3/§5, K2  ·  ✅ DONE
 
 **Goal:** procedural knowledge as data — cooking / fabric-aware laundry.
+**Done (2026-06-28):** `episteme.py` — see [specs/P2-episteme-skill-cards.md](specs/P2-episteme-skill-cards.md).
 
 - `SkillCard` schema — **flat steps + rules (K2)**; DAG reserved via schema
   version. Fields: `id`, `category`, `preconditions`, `rules`, `steps`,

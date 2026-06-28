@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 from .execute import StatusUpdate, SubTask
@@ -47,6 +47,10 @@ class Command:
 
     verb: str
     args: tuple[str, ...] = ()
+    # Verb-specific params resolved upstream (e.g. an Episteme skill card's rule
+    # sets ``{"program": "delicate"}``). Empty for a bare text line from the LLM;
+    # the compiler merges these over the per-verb table defaults.
+    params: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -277,12 +281,14 @@ def compile_commands(
         meta = _VERB_TABLE.get(verb, {})
         target_ids = tuple(nid for a in cmd.args if (nid := _resolve_node_id(mem, a)) is not None)
         target_str = cmd.args[0] if cmd.args else ""
+        # table defaults first, then upstream command params (skill-card rules) win
+        params = {**meta.get("params", {}), **cmd.params}
         subtasks.append(
             SubTask(
                 id=f"{batch}-{i:02d}",
                 verb=verb,
                 target_node_ids=target_ids,
-                params=dict(meta.get("params", {})),
+                params=params,
                 skill=str(meta.get("skill", "")),
                 preconditions=tuple(p.format(target=target_str) for p in meta.get("pre", ())),
                 effects=tuple(e.format(target=target_str) for e in meta.get("eff", ())),

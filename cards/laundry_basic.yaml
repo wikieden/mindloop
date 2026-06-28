@@ -1,0 +1,40 @@
+# Episteme skill card (P2) — basic laundry, fabric/color aware.
+# Flat steps + rules (K2). Verbs must be ones the body declares (D3); object
+# slots ("appliance", "clothes") resolve from situation slots or fall back to the
+# card category. Rules overlay wash-program params from detected fabric/color.
+id: laundry_basic
+category: laundry
+provenance: builtin
+preconditions:
+  - robot.canMove
+  - washer.reachable
+safety:
+  max_water_temperature_c: 90
+steps:
+  - verb: navigate
+    target: washer
+  - verb: open_door
+    target: washer
+  - verb: grasp
+    target: clothes
+  - verb: place
+    target: washer
+  - verb: operate_appliance
+    target: washer
+    params:
+      program: normal
+      temperature_c: 40
+  - verb: speak
+    target: "Starting the wash now."
+rules:
+  - when: { fabric: wool }
+    target_verb: operate_appliance
+    set_params: { program: delicate, temperature_c: 30 }
+  - when: { fabric: silk }
+    target_verb: operate_appliance
+    set_params: { program: delicate, temperature_c: 30 }
+  - when: { color: dark }
+    target_verb: operate_appliance
+    set_params: { temperature_c: 30 }
+failure_hints:
+  - If the door will not open, check the washer is not mid-cycle.

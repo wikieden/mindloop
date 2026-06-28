@@ -16,7 +16,10 @@ dependencies = ["tempomem", "numpy"]
 # Full stack (memory + perception). Perception is a private companion repo;
 # install it alongside for Brain.observe(rgb, depth, pose) with a real adapter.
 perception = ["worldsense"]
-dev = ["pytest", "pytest-cov", "ruff", "pyright"]
+# YAML skill-card loader (Episteme, P2). Cards can also be built from dicts with
+# no dep; this extra is only for `load_cards()` reading *.yaml off disk.
+skills = ["pyyaml"]
+dev = ["pytest", "pytest-cov", "ruff", "pyright", "pyyaml"]
 
 [project.urls]
 Core = "https://github.com/wikieden/tempomem"

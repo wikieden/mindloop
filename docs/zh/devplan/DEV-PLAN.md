@@ -121,9 +121,10 @@ node id。✅ 达成 —— `plan.py` + `Brain.handle`；8 个网络无关测试
 ruff clean；pyright 0。并对真 Cosmos-Reason2 vLLM 端点端到端交叉验证（意图路由 +
 LLM 动词计划 → node 绑定下发 + 带引用问答）。
 
-### P2 —— Episteme 技能卡库  ·  M-L3.2  ·  D3/§5、K2
+### P2 —— Episteme 技能卡库  ·  M-L3.2  ·  D3/§5、K2  ·  ✅ DONE
 
 **目标：** 程序性知识做成数据 —— 做菜 / 按面料洗衣。
+**已完成（2026-06-28）：** `episteme.py` —— 见 [specs/P2-episteme-skill-cards.md](specs/P2-episteme-skill-cards.md)。
 
 - `SkillCard` schema —— **flat steps + rules（K2）**；DAG 留 schema 版本位。
   字段：`id`、`category`、`preconditions`、`rules`、`steps`、`failure_hints`、

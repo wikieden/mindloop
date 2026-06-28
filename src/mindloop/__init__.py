@@ -9,6 +9,16 @@ ships only the `Verbalizer` protocol + `answer()` seam.
 from __future__ import annotations
 
 from .brain import Brain
+from .episteme import (
+    Rule,
+    SkillCard,
+    SkillCardPlanner,
+    SkillLibrary,
+    SkillStep,
+    extract_slots,
+    instantiate,
+    load_cards,
+)
 from .errors import BrainError
 from .eval import CitationReport, citation_compliance
 from .execute import (
@@ -63,9 +73,14 @@ __all__ = [
     "Reasoner",
     "RecoveryHint",
     "RecoveryKind",
+    "Rule",
     "ScriptedIntentRouter",
     "ScriptedPlanner",
     "ScriptedReasoner",
+    "SkillCard",
+    "SkillCardPlanner",
+    "SkillLibrary",
+    "SkillStep",
     "StatusUpdate",
     "SubTask",
     "TaskStatus",
@@ -76,6 +91,9 @@ __all__ = [
     "VerbalizerReasoner",
     "citation_compliance",
     "compile_commands",
+    "extract_slots",
+    "instantiate",
+    "load_cards",
     "parse_commands",
     "strip_reasoning",
 ]
