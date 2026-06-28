@@ -66,6 +66,7 @@ P0 契约 ─► P1 意图+规划 ─► P2 Episteme ─► P3 Phylax ─► P4 
 | P4 | L4 痕迹 + 重规划 | **M-L3.3** |
 | P5 | 对话 + 完整 S2 回路 | M-L3.3 |
 | P6 | 生产推理器 + 评测 + 云启动 | **M-L3.4** |
+| P7 | 边缘回退 —— 本体离线 AI 链路（LLM + ASR + TTS） | **M-L3.6** |
 
 ---
 
@@ -196,6 +197,27 @@ LLM 动词计划 → node 绑定下发 + 带引用问答）。
 **测试：** 真 Cosmos-Reason2 跑回路；评测套对预算达标（B2：查询 100–500 ms，
 简单任务 0.5–2 s）。
 **出口：** 生产推理器驱动全回路；评测阈值达标；云 → Thor 切换验证。
+
+---
+
+### P7 —— 边缘回退：本体离线 AI 链路  ·  M-L3.6  ·  横切
+
+**目标：** 网络断时靠本体保持认知可用 —— 小本地 LLM + 本体 ASR + TTS 构成自给 AI 链路。
+远端大模型为主；本体链路是**降级回退**，绝不丢失安全与记忆（二者本就本地）。完整 spec：
+[specs/P7-edge-fallback.md](specs/P7-edge-fallback.md)。
+
+- **`FailoverVerbalizer`** —— 包 `[远端, 本体]` Verbalizer；遇传输错误（`QueryError`）回落
+  本地 OpenAI 兼容服务，带滞回。大脑不变（复用 `Verbalizer` seam）；覆盖 Reasoner 与
+  Planner/IntentRouter。
+- **`Listener`（ASR）+ `Speaker`（TTS）seam** —— mindloop 发的新 BYO 协议（同
+  `ExecutorAdapter`），带 `Mock*`；薄 `voice.py` 回路串 `Listener → handle → Speaker`。
+  本体引擎（whisper.cpp/sherpa-onnx；piper）树外。
+- **模式仲裁** —— `ConnectivityMonitor` 选在线（远端）vs 离线（本体）；降级契约（技能卡优先、
+  保守安全、更简答案、诚实"我离线了" UX）。
+
+**Owner 决策（spec §7）：** 降级非对等（D-edge-1）；ASR/TTS 作新 BYO seam（D-edge-2）；
+边缘 LLM/ASR/TTS 栈 + 算力目标；ASR/TTS 包归属。
+**出口（M-L3.6）：** 拔网 —— 机器人仍听到、规划、过安全 gate、动作、说话，全靠自身算力。
 
 ---
 

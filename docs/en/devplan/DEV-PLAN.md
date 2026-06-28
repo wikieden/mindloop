@@ -71,6 +71,7 @@ P0 contracts ─► P1 intent+plan ─► P2 Episteme ─► P3 Phylax ─► P4
 | P4 | L4 Trace + replanning | **M-L3.3** |
 | P5 | Dialogue + full S2 loop | M-L3.3 |
 | P6 | Production reasoner + eval + cloud bootstrap | **M-L3.4** |
+| P7 | Edge fallback — on-body offline AI chain (LLM + ASR + TTS) | **M-L3.6** |
 
 ---
 
@@ -220,6 +221,33 @@ MockBody.
 (B2: query 100–500 ms, simple task 0.5–2 s).
 **Exit:** production reasoner drives the full loop; eval thresholds met; cloud →
 Thor switch verified.
+
+---
+
+### P7 — Edge fallback: on-body offline AI chain  ·  M-L3.6  ·  cross-cutting
+
+**Goal:** when the network is down, stay cognitively functional on-body — a small
+local LLM + on-body ASR + TTS form a self-contained AI chain. The remote big
+models are primary; the on-body chain is a **degraded fallback**, never losing
+safety or memory (both already local). See full spec:
+[specs/P7-edge-fallback.md](specs/P7-edge-fallback.md).
+
+- **`FailoverVerbalizer`** — wraps `[remote, on-body]` Verbalizers; on a transport
+  error (`QueryError`) falls to the local OpenAI-compatible server, with
+  hysteresis. Brain unchanged (reuses the `Verbalizer` seam); covers both Reasoner
+  and Planner/IntentRouter.
+- **`Listener` (ASR) + `Speaker` (TTS) seams** — new BYO protocols mindloop ships
+  (like `ExecutorAdapter`), with `Mock*` impls; a thin `voice.py` loop ties
+  `Listener → handle → Speaker`. On-body engines (whisper.cpp/sherpa-onnx; piper)
+  are out-of-tree.
+- **Mode arbitration** — a `ConnectivityMonitor` picks online (remote) vs offline
+  (on-body); degradation contract (skill-card-first, conservative safety, simpler
+  answers, honest "I'm offline" UX).
+
+**Owner decisions (spec §7):** degraded-not-parity (D-edge-1); ASR/TTS as new BYO
+seams (D-edge-2); the edge LLM/ASR/TTS stack + compute target; ASR/TTS package home.
+**Exit (M-L3.6):** pull the network — the robot still hears, plans, passes the
+safety gate, acts, and speaks, entirely on its own compute.
 
 ---
 
