@@ -157,7 +157,9 @@ LLM 动词计划 → node 绑定下发 + 带引用问答）。
 **测试：** 非成人发起刀具 → 拒绝；人旁超速 → 拒绝；未签名 `safety:` 卡 → 拒绝。
 **出口：** 每个下发计划都过了策略检查；违规被拦 + 入痕迹。
 
-### P4 —— L4 痕迹 + 重规划  ·  M-L3.3  ·  D2 + B3
+### P4 —— L4 痕迹 + 重规划  ·  M-L3.3  ·  D2 + B3  ·  ✅ DONE
+
+**已完成（2026-06-28）：** `trace.py` + `replan.py` —— 见 [specs/P4-trace-replanning.md](specs/P4-trace-replanning.md)。（L4 痕迹暂在 mindloop；D2 核心合并推迟。）
 
 **目标：** episodic 记忆 + 失败驱动修复。
 

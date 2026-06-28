@@ -17,16 +17,19 @@ from typing import TYPE_CHECKING, Any
 from .errors import BrainError
 from .health import HealthReport
 from .phylax import refusal_speak
-from .plan import HandleResult, compile_commands
+from .plan import HandleResult, Plan, compile_commands
 from .reason import Answer, Reasoner
+from .replan import ReplanAction
 
 if TYPE_CHECKING:
     import numpy as np
     from tempomem import Detection, PerceptionAdapter, SpatialMemory
 
-    from .execute import ExecutorAdapter, StatusUpdate
+    from .execute import ExecutorAdapter, StatusUpdate, SubTask
     from .phylax import Phylax, SafetyContext
     from .plan import IntentRouter, Planner
+    from .replan import Replanner
+    from .trace import TraceStore
 
 
 class Brain:
@@ -49,6 +52,8 @@ class Brain:
         planner: Planner | None = None,
         executor: ExecutorAdapter | None = None,
         policy: Phylax | None = None,
+        replanner: Replanner | None = None,
+        trace: TraceStore | None = None,
         default_speak: str = "OK.",
     ) -> None:
         self._mem = mem
@@ -62,6 +67,12 @@ class Brain:
         # task plan is vetted before dispatch; a violation blocks the whole plan
         # (stop + speak, no reroute). None ⇒ no gate (dispatch as in P1/P2).
         self._policy = policy
+        # Optional failure-driven repair (P4). `replanner` turns a typed FAILED
+        # StatusUpdate (B3) into a bounded corrective sequence; `trace` logs every
+        # attempt/failure (L4 episodic, citing node ids). None ⇒ dispatch once.
+        self._replanner = replanner
+        self._trace = trace
+        self._session_n = 0
         # Floor utterance when a task plan dispatches but the planner LLM omitted
         # a `speak` line — guarantees user feedback even with a weak instruction
         # follower. Override to localize (e.g. "好的。").
@@ -155,8 +166,63 @@ class Brain:
                 blocked = replace(plan, speak=refusal_speak(violations))
                 return HandleResult(intent=intent, plan=blocked, violations=violations)
 
-        statuses = tuple(self._drain(st) for st in plan.subtasks)
+        statuses, escalation = self._dispatch_plan(plan, safety_context)
+        if escalation is not None:
+            plan = replace(plan, speak=escalation)
         return HandleResult(intent=intent, plan=plan, statuses=statuses)
+
+    def _dispatch_plan(
+        self, plan: Plan, safety_context: SafetyContext | None
+    ) -> tuple[tuple[StatusUpdate, ...], str | None]:
+        """Dispatch each subtask, repairing failures via the replanner (P4).
+
+        Without a `replanner`, this is the P1-P3 behavior (dispatch each subtask
+        once). With one, a `FAILED` terminal is fed to `Replanner.replan` and the
+        bounded corrective sequence is dispatched in its place; an escalation stops
+        the plan and returns a `speak`. Every attempt is logged to the trace.
+        """
+        if self._replanner is not None:
+            self._replanner.reset()  # new task: counters reset, trace untouched
+        self._session_n += 1
+        session = f"s{self._session_n}"
+
+        statuses: list[StatusUpdate] = []
+        for sub in plan.subtasks:
+            st = self._drain(sub)
+            self._record(sub, st, session)
+            if st.status.value == "failed" and self._replanner is not None:
+                st, escalation = self._repair(sub, st, safety_context, session)
+                if escalation is not None:
+                    statuses.append(st)
+                    return tuple(statuses), escalation  # safety-class stop: end plan
+            statuses.append(st)
+        return tuple(statuses), None
+
+    def _repair(
+        self, sub: SubTask, st: StatusUpdate, safety_context: SafetyContext | None, session: str
+    ) -> tuple[StatusUpdate, str | None]:
+        """Bounded repair loop for one failed subtask. Returns (terminal, escalation)."""
+        assert self._replanner is not None
+        while st.status.value == "failed":
+            decision = self._replanner.replan(sub, st)
+            if decision.action == ReplanAction.SKIP:
+                return st, None  # drop this step, keep the plan going
+            if decision.gives_up:
+                return st, decision.speak  # escalate: stop + speak
+            # Safety still applies to a corrective plan (P3): re-vet before acting.
+            if self._policy is not None:
+                viol = self._policy.check(Plan(subtasks=decision.subtasks), safety_context)
+                if viol:
+                    return st, refusal_speak(viol)
+            for cs in decision.subtasks:
+                st = self._drain(cs)
+                self._record(cs, st, session)
+                sub = cs  # the retried step keys the next replan
+        return st, None  # recovered
+
+    def _record(self, sub: SubTask, st: StatusUpdate, session: str) -> None:
+        if self._trace is not None:
+            self._trace.log_attempt(sub, st, session_id=session)
 
     def _plan_context(self, instruction: str, *, manifest_verbs: list[str], k: int) -> str:
         """Build the planner's context: the relevant scene subgraph + the verb

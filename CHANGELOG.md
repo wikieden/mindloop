@@ -8,6 +8,21 @@ follow SemVer (pre-1.0, the API may change between minor releases).
 
 ### Added
 
+- **L4 trace + failure-driven replanning (P4, M-L3.3, D2/B3)** — `trace.py` +
+  `replan.py`. `TraceStore` is an append-only stdlib-sqlite episodic log of every
+  dispatched attempt + failure, each citing tempomem **node ids** (B9) so it is
+  queryable by object (`by_node`) and session; records are never deleted
+  ("clearing" a task rotates the `session_id`), and `failures()` is the
+  negation-learning view. `Replanner` maps a typed `FAILED` `StatusUpdate` (B3 —
+  `ErrorCode` + `RecoveryHint`) to a **bounded** corrective `SubTask` sequence at
+  the post-compile level (reusing node ids): `RETRY` / `ADJUST` (typed offset/
+  relax/force param) / `REROUTE` (navigate + re-issue) / `SKIP` / `ESCALATE`. Caps
+  are per-`(verb, node-ids)` target (≤2) + a global budget (≤6) — past either it
+  escalates (stop + speak, never an infinite loop). `Brain(replanner=…, trace=…)`
+  (opt-in) turns dispatch into a bounded replan loop; a corrective plan is
+  **re-vetted by Phylax (P3)** before it acts, and an escalation stops the whole
+  plan with a repair message. No network, no LLM. See
+  docs/devplan/specs/P4-trace-replanning.md.
 - **`FailoverVerbalizer` (P7.1, edge fallback)** — a `Verbalizer` that fails over
   from a primary backend to on-body fallbacks: `complete` tries an ordered list of
   `Verbalizer`s and returns the first success; a backend raising `QueryError` (a

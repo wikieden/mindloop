@@ -58,6 +58,8 @@ from .plan import (
 )
 from .preference import PreferenceStore
 from .reason import Answer, Reasoner, ScriptedReasoner, ToolCall, VerbalizerReasoner
+from .replan import ReplanAction, ReplanDecision, Replanner
+from .trace import TraceRecord, TraceStore
 from .verbalizers import CosmosReasonVerbalizer, FailoverVerbalizer, strip_reasoning
 
 __version__ = "0.1.0a0"
@@ -85,6 +87,9 @@ __all__ = [
     "Reasoner",
     "RecoveryHint",
     "RecoveryKind",
+    "ReplanAction",
+    "ReplanDecision",
+    "Replanner",
     "Role",
     "Rule",
     "SafetyContext",
@@ -100,6 +105,8 @@ __all__ = [
     "SubTask",
     "TaskStatus",
     "ToolCall",
+    "TraceRecord",
+    "TraceStore",
     "VerbSpec",
     "VerbalizerIntentRouter",
     "VerbalizerPlanner",

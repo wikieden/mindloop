@@ -173,7 +173,9 @@ unsigned `safety:` card → refused.
 **Exit:** every dispatched plan has passed a policy check; violations blocked +
 traced.
 
-### P4 — L4 Trace + replanning  ·  M-L3.3  ·  D2 + B3
+### P4 — L4 Trace + replanning  ·  M-L3.3  ·  D2 + B3  ·  ✅ DONE
+
+**Done (2026-06-28):** `trace.py` + `replan.py` — see [specs/P4-trace-replanning.md](specs/P4-trace-replanning.md). (L4 trace lives in mindloop for now; D2 core-merge deferred.)
 
 **Goal:** episodic memory + failure-driven repair.
 
