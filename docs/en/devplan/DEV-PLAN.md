@@ -264,7 +264,8 @@ reasoner + eval).
 | **P6 eval thresholds** | proposed | `EvalThresholds` defaults: planning ≥0.9, policy =1.0, replan ≥0.8, intent ≥0.95 — owner to ratify |
 | **negation_constraints SubTask field** | not added | P4 didn't need it; add if full B2R replan parity is wanted |
 | **bodylink → own repo/submodule** | ✅ done (2026-06-29) | wikieden/bodylink (private) + root submodule, like mindloop/tempomem/worldsense |
-| **voicelink speech member** | ✅ done (2026-06-29) | 6th member: ASR/TTS engine fills for the `Listener`/`Speaker` seams (P7); in-root for now |
+| **voicelink speech member** | ✅ done (2026-06-29) | 6th member: ASR/TTS engine fills for the `Listener`/`Speaker` seams (P7); own repo wikieden/voicelink + submodule |
+| **all members → own repos** | ✅ done (2026-06-29) | skillforge + voicelink also graduated; **all 6 members are now private repos + root submodules** — root holds only wiring + docs |
 | **D3 body track** (real HW adapter, BT/reflex Phylax tiers) | pending | tracked in bodylink design doc + TECH-DESIGN, not phased here |
 | **Dynamic scene context** (active perception) | ✅ phases 1–4 done | seam + `WorldState` write-back + idempotent dispatch + active-perception tail re-plan — the perceive-act-update cycle is closed; see research/dynamic-scene-context.md |
 
