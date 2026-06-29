@@ -228,7 +228,8 @@ P5 给它包上**多轮对话**（`dialogue.py` —— `Conversation` 把近期�
 | **Phylax FMEA** | open（继承） | 策略从 B2R 硬约束枚举，非失效模式分析所得 |
 | **P6 评测阈值** | 已提议 | `EvalThresholds` 默认：规划 ≥0.9、策略 =1.0、重规划 ≥0.8、意图 ≥0.95 —— 待 owner 批准 |
 | **negation_constraints SubTask 字段** | 未加 | P4 不需要；要 B2R 重规划完全对等再加 |
-| **bodylink → 独立仓/子模块** | 待定 | 需 owner 放行（对外动作） |
+| **bodylink → 独立仓/子模块** | ✅ 完成（2026-06-29） | wikieden/bodylink（私有）+ root 子模块，同 mindloop/tempomem/worldsense |
+| **voicelink 语音成员** | ✅ 完成（2026-06-29） | 第 6 成员：ASR/TTS 引擎填 `Listener`/`Speaker` seam（P7）；暂在 root |
 | **D3 本体轨**（真 HW adapter、BT/反射 Phylax 层） | 待定 | bodylink 设计文档 + TECH-DESIGN 追踪，此处未分期 |
 | **动态场景上下文**（主动感知） | ✅ 第 1–4 步完成 | seam + `WorldState` 回写 + 幂等派发 + 主动感知尾部重规划 —— 感知-行动-更新回路闭合；见 research/dynamic-scene-context.md |
 
