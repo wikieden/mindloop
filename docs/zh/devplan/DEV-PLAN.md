@@ -233,7 +233,8 @@ P5 给它包上**多轮对话**（`dialogue.py` —— `Conversation` 把近期�
 | **全成员 → 独立仓** | ✅ 完成（2026-06-29） | skillforge + voicelink 也毕业；**6 成员全为私有仓 + root 子模块** —— root 只剩 wiring + docs |
 | **D3 本体轨**（真 HW adapter、BT/反射 Phylax 层） | 待定 | bodylink 设计文档 + TECH-DESIGN 追踪，此处未分期 |
 | **动态场景上下文**（主动感知） | ✅ 第 1–4 步完成 | seam + `WorldState` 回写 + 幂等派发 + 主动感知尾部重规划 —— 感知-行动-更新回路闭合；见 research/dynamic-scene-context.md |
+| **任务族 + 执行动态** | 规划中（2026-06-30） | 横切规划在 root [TASK-FAMILIES.md](../../../../docs/zh/TASK-FAMILIES.md)。mindloop 侧：`BargeClassifier`（D2）、大脑级 `Clarifier` + `ReplanAction.ASK_HUMAN`（D3）、灶/利器参数级 `(verb,param)` 门控（D1）、区域访问 key 现有 `Role`、新 `_VERB_TABLE` 动词（present/wipe/pour/dispose）+ 区域编码 `place` effect。族评测门槛**已拍** —— 取代上方 P6 提议阈值行 |
 
 ---
 
-*2026-06-28 更新。每阶段先写 spec；声称 done 前先验证。*
+*2026-06-30 更新。每阶段先写 spec；声称 done 前先验证。*
