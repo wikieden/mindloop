@@ -17,7 +17,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from tempomem import HashEncoder, SpatialMemory, SyntheticScene, stream
+from tempomem import HashEncoder, SyntheticScene, TempoMem, stream
 
 from mindloop import CosmosReasonVerbalizer
 
@@ -57,7 +57,7 @@ def main() -> None:
     #   or self-hosted: CosmosReasonVerbalizer(base_url="http://localhost:8000/v1", model=...)
 
     path = Path(tempfile.mkdtemp()) / "kitchen.smem"
-    with SpatialMemory.open(path, embedding_dim=DIM, encoder=enc, verbalizer=vb) as mem:
+    with TempoMem.open(path, embedding_dim=DIM, encoder=enc, verbalizer=vb) as mem:
         n_frames, n_obs = stream(mem, scene, commit_every=4)
         st = mem.stats()
         print(f"streamed {n_frames} frames, {n_obs} obs -> {st.n_nodes} nodes after fusion")

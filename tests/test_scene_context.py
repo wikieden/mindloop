@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     Brain,
@@ -22,8 +22,8 @@ DIM = 16
 
 
 @pytest.fixture
-def mem(tmp_path) -> SpatialMemory:
-    m = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=DIM)
+def mem(tmp_path) -> TempoMem:
+    m = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
 
     def f(s: int) -> np.ndarray:
         v = np.random.default_rng(s).standard_normal(DIM).astype("float32")
@@ -39,7 +39,7 @@ def mem(tmp_path) -> SpatialMemory:
     return m
 
 
-def test_provider_returns_text_and_version(mem: SpatialMemory) -> None:
+def test_provider_returns_text_and_version(mem: TempoMem) -> None:
     p = DefaultSceneContextProvider(mem)
     text, version = p.context(Focus(query="bottle"))
     assert isinstance(text, str) and text  # non-empty serialized scene
@@ -47,7 +47,7 @@ def test_provider_returns_text_and_version(mem: SpatialMemory) -> None:
     assert isinstance(p, SceneContextProvider)
 
 
-def test_bump_advances_version(mem: SpatialMemory) -> None:
+def test_bump_advances_version(mem: TempoMem) -> None:
     p = DefaultSceneContextProvider(mem)
     assert p.version == 0
     assert p.bump() == 1
@@ -55,7 +55,7 @@ def test_bump_advances_version(mem: SpatialMemory) -> None:
     assert v == 1
 
 
-def test_focus_node_ids_union_keeps_targets_in_view(mem: SpatialMemory) -> None:
+def test_focus_node_ids_union_keeps_targets_in_view(mem: TempoMem) -> None:
     p = DefaultSceneContextProvider(mem)
     # query for 'bottle' alone; then force the lamp (node 2) into view via focus
     base, _ = p.context(Focus(query="bottle"))
@@ -65,7 +65,7 @@ def test_focus_node_ids_union_keeps_targets_in_view(mem: SpatialMemory) -> None:
     assert ("lamp" in base) is False or with_lamp != base
 
 
-def test_empty_query_falls_back_to_whole_scene(mem: SpatialMemory) -> None:
+def test_empty_query_falls_back_to_whole_scene(mem: TempoMem) -> None:
     p = DefaultSceneContextProvider(mem)
     text, _ = p.context(Focus(query="nonexistent_xyzzy"))
     assert text  # whole-scene fallback, not empty
@@ -74,7 +74,7 @@ def test_empty_query_falls_back_to_whole_scene(mem: SpatialMemory) -> None:
 # --------------------------------------------------------------------------- #
 # Brain integration — behavior preserved, version bumps on perception
 # --------------------------------------------------------------------------- #
-def test_brain_uses_provider_and_bumps_on_ingest(mem: SpatialMemory) -> None:
+def test_brain_uses_provider_and_bumps_on_ingest(mem: TempoMem) -> None:
     provider = DefaultSceneContextProvider(mem, default_budget=1500)
     brain = Brain(
         mem,

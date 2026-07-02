@@ -38,7 +38,7 @@ brain 包只拥有慢思考层和另外两层要填的**契约**。Habit 的参�
 ```
 用户/世界事件
   → 意图路由（任务? 提问? 闲聊?）
-  → 检索：SpatialMemory.query(k) → serialize(node_ids=hits)   # 带引用的上下文
+  → 检索：TempoMem.query(k) → serialize(node_ids=hits)   # 带引用的上下文
   → 推理：Reasoner (LLM) → 技能动词计划，或 Answer(text, cited_node_ids)
   → 策略检查（Phylax，§6）→ 经 ExecutorAdapter 下发给 Habit
   → 收到失败上报 → 重规划（用技能卡的 failure hints，§5）
@@ -48,7 +48,7 @@ S2 的一切输出都**接地**：计划把物体槽位绑到场景图 node id�
 node id。从相机像素到执行器指令的审计链不断。
 
 从 Brain2Robot（实验仓）收编：意图路由、任务规划、重规划、对话引擎 ——
-全部改写到 `SpatialMemory` 之上，替换 B2R 手写的 scene graph / WorldState。
+全部改写到 `TempoMem` 之上，替换 B2R 手写的 scene graph / WorldState。
 
 ### 2.2 习惯（S1）—— 在执行缝之外
 

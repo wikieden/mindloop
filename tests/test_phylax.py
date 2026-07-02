@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     Brain,
@@ -99,8 +99,8 @@ def test_unsigned_safety_card_refused() -> None:
 # integration through Brain.handle
 # --------------------------------------------------------------------------- #
 @pytest.fixture
-def mem(tmp_path) -> SpatialMemory:
-    m = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=DIM)
+def mem(tmp_path) -> TempoMem:
+    m = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
     rng = np.random.default_rng(0).standard_normal(DIM).astype("float32")
     m.add_detections(
         [
@@ -113,7 +113,7 @@ def mem(tmp_path) -> SpatialMemory:
     return m
 
 
-def _brain(mem: SpatialMemory, policy: Phylax) -> Brain:
+def _brain(mem: TempoMem, policy: Phylax) -> Brain:
     return Brain(
         mem,
         ScriptedReasoner(),
@@ -124,7 +124,7 @@ def _brain(mem: SpatialMemory, policy: Phylax) -> Brain:
     )
 
 
-def test_handle_blocks_unsafe_plan_and_speaks(mem: SpatialMemory) -> None:
+def test_handle_blocks_unsafe_plan_and_speaks(mem: TempoMem) -> None:
     brain = _brain(mem, Phylax(Policy(adult_only_verbs=frozenset({"grasp"}))))
     r = brain.handle("go", safety_context=SafetyContext(role="child"))
     assert r.blocked
@@ -133,7 +133,7 @@ def test_handle_blocks_unsafe_plan_and_speaks(mem: SpatialMemory) -> None:
     assert r.plan is not None and r.plan.speak  # a refusal was spoken
 
 
-def test_handle_dispatches_when_cleared(mem: SpatialMemory) -> None:
+def test_handle_dispatches_when_cleared(mem: TempoMem) -> None:
     brain = _brain(mem, Phylax(Policy(adult_only_verbs=frozenset({"grasp"}))))
     r = brain.handle("go", safety_context=SafetyContext(role="adult"))
     assert not r.blocked
@@ -141,7 +141,7 @@ def test_handle_dispatches_when_cleared(mem: SpatialMemory) -> None:
     assert [s.status for s in r.statuses] == [TaskStatus.SUCCESS]
 
 
-def test_no_policy_dispatches_as_before(mem: SpatialMemory) -> None:
+def test_no_policy_dispatches_as_before(mem: TempoMem) -> None:
     # P1/P2 behavior is preserved when no policy is wired
     brain = Brain(
         mem,
@@ -155,7 +155,7 @@ def test_no_policy_dispatches_as_before(mem: SpatialMemory) -> None:
     assert [s.status for s in r.statuses] == [TaskStatus.SUCCESS]
 
 
-def test_skillcardplanner_refuses_untrusted_safety_card(mem: SpatialMemory) -> None:
+def test_skillcardplanner_refuses_untrusted_safety_card(mem: TempoMem) -> None:
     card = SkillCard.from_dict(
         {
             "id": "shady_laundry",

@@ -13,11 +13,11 @@ build.nvidia.com gateway, or a self-hosted NIM microservice). Uses only the
 standard library (`urllib`). The model id is configurable, so the same wrapper
 targets Cosmos Reason 1/2 or the Cosmos 3 Reasoner NIM.
 
-    from tempomem import SpatialMemory
+    from tempomem import TempoMem
     from mindloop import CosmosReasonVerbalizer
 
     vb = CosmosReasonVerbalizer(model="nvidia/cosmos-reason2-8b")  # NVIDIA_API_KEY env
-    mem = SpatialMemory.open("room.smem", embedding_dim=512, verbalizer=vb)
+    mem = TempoMem.open("room.smem", embedding_dim=512, verbalizer=vb)
     print(mem.answer("what is on the kitchen table?"))
 """
 

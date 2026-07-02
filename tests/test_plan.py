@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     Answer,
@@ -29,8 +29,8 @@ def _feat(seed: int) -> np.ndarray:
 
 
 @pytest.fixture
-def mem(tmp_path) -> SpatialMemory:
-    m = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=DIM)
+def mem(tmp_path) -> TempoMem:
+    m = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
     m.add_detections(
         [
             Detection("bottle", _feat(1), (1.0, 0.3, 0.9), (0.95, 0.25, 0.85), (1.05, 0.35, 0.95)),
@@ -41,7 +41,7 @@ def mem(tmp_path) -> SpatialMemory:
     return m
 
 
-def test_task_plans_then_dispatches_with_node_ids(mem: SpatialMemory) -> None:
+def test_task_plans_then_dispatches_with_node_ids(mem: TempoMem) -> None:
     router = ScriptedIntentRouter({"bring the bottle": "task"})
     planner = ScriptedPlanner(
         {
@@ -73,7 +73,7 @@ def test_task_plans_then_dispatches_with_node_ids(mem: SpatialMemory) -> None:
         assert st.touched_node_ids == sub.target_node_ids
 
 
-def test_unsupported_verb_is_dropped_not_dispatched(mem: SpatialMemory) -> None:
+def test_unsupported_verb_is_dropped_not_dispatched(mem: TempoMem) -> None:
     # 'fly' is not in the G1-D manifest -> dropped (D3), never reaches the body
     planner = ScriptedPlanner({"go": (Command("fly", ("bottle",)), Command("grasp", ("bottle",)))})
     brain = Brain(
@@ -88,7 +88,7 @@ def test_unsupported_verb_is_dropped_not_dispatched(mem: SpatialMemory) -> None:
     assert len(r.statuses) == 1
 
 
-def test_question_intent_routes_to_ask(mem: SpatialMemory) -> None:
+def test_question_intent_routes_to_ask(mem: TempoMem) -> None:
     brain = Brain(
         mem,
         ScriptedReasoner({"what is here?": "a bottle [#1]"}),
@@ -103,7 +103,7 @@ def test_question_intent_routes_to_ask(mem: SpatialMemory) -> None:
     assert r.statuses == ()
 
 
-def test_compile_binds_node_ids_and_fills_metadata(mem: SpatialMemory) -> None:
+def test_compile_binds_node_ids_and_fills_metadata(mem: TempoMem) -> None:
     plan = compile_commands((Command("grasp", ("bottle",)),), mem, MockBody().capabilities())
     assert len(plan.subtasks) == 1
     st = plan.subtasks[0]
@@ -113,7 +113,7 @@ def test_compile_binds_node_ids_and_fills_metadata(mem: SpatialMemory) -> None:
     assert st.params == {"grasp_type": "side"}
 
 
-def test_compile_unknown_object_emits_empty_targets(mem: SpatialMemory) -> None:
+def test_compile_unknown_object_emits_empty_targets(mem: TempoMem) -> None:
     # 'spaceship' matches no node -> emitted with empty targets, not dropped
     plan = compile_commands((Command("navigate", ("spaceship",)),), mem, MockBody().capabilities())
     assert len(plan.subtasks) == 1
@@ -128,7 +128,7 @@ def test_parse_commands_text_format() -> None:
     assert cmds[2].args == ("here you go",)
 
 
-def test_speak_fallback_when_planner_omits_it(mem: SpatialMemory) -> None:
+def test_speak_fallback_when_planner_omits_it(mem: TempoMem) -> None:
     # a planner (weak instruction follower) emits no speak line -> Brain's
     # default_speak floor fills it so a dispatched task still acknowledges
     planner = ScriptedPlanner({"go": (Command("grasp", ("bottle",)),)})
@@ -152,13 +152,13 @@ def test_speak_fallback_when_planner_omits_it(mem: SpatialMemory) -> None:
     assert plan.speak == "here"
 
 
-def test_handle_without_collaborators_raises(mem: SpatialMemory) -> None:
+def test_handle_without_collaborators_raises(mem: TempoMem) -> None:
     brain = Brain(mem, ScriptedReasoner())
     with pytest.raises(BrainError):
         brain.handle("do something")
 
 
-def test_handle_task_without_executor_raises(mem: SpatialMemory) -> None:
+def test_handle_task_without_executor_raises(mem: TempoMem) -> None:
     brain = Brain(
         mem,
         ScriptedReasoner(),

@@ -1,6 +1,6 @@
 """Brain — the cognitive loop binding memory + reasoning (+ optional perception).
 
-`Brain` ties a `tempomem.SpatialMemory` (the hippocampus) to a `Reasoner` (the
+`Brain` ties a `tempomem.TempoMem` (the hippocampus) to a `Reasoner` (the
 cortex), with an optional `tempomem.PerceptionAdapter` (the eyes, from
 `worldsense`). The tick is: perceive → remember (observe/ingest),
 then on demand retrieve → reason (ask). See docs/cosmos3-tempomem-llm-brain.md.
@@ -28,7 +28,7 @@ from .world_state import WorldState, parse_effect
 
 if TYPE_CHECKING:
     import numpy as np
-    from tempomem import Detection, PerceptionAdapter, SpatialMemory
+    from tempomem import Detection, PerceptionAdapter, TempoMem
 
     from .active_perception import ActivePerception
     from .execute import CapabilityManifest, ExecutorAdapter, SubTask
@@ -51,7 +51,7 @@ class Brain:
 
     def __init__(
         self,
-        mem: SpatialMemory,
+        mem: TempoMem,
         reasoner: Reasoner,
         *,
         adapter: PerceptionAdapter | None = None,

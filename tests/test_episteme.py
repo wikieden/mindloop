@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     Brain,
@@ -195,7 +195,7 @@ def test_planner_empty_without_fallback(manifest) -> None:
 # --------------------------------------------------------------------------- #
 def test_compile_carries_card_params(manifest) -> None:
     cmds = instantiate(_laundry(), manifest, slots={"fabric": "wool"})
-    mem = SpatialMemory.open(":memory:", embedding_dim=8)
+    mem = TempoMem.open(":memory:", embedding_dim=8)
     plan = compile_commands(cmds, mem, manifest)
     op = next(s for s in plan.subtasks if s.verb == "operate_appliance")
     assert op.params["program"] == "delicate"  # card param survived compilation
@@ -203,7 +203,7 @@ def test_compile_carries_card_params(manifest) -> None:
 
 
 def test_brain_handle_runs_card_end_to_end(tmp_path) -> None:
-    mem = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=8)
+    mem = TempoMem.open(tmp_path / "s.smem", embedding_dim=8)
     f = lambda s: (lambda v: v / np.linalg.norm(v))(  # noqa: E731
         np.random.default_rng(s).standard_normal(8).astype("float32")
     )

@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from tempomem import SpatialMemory
+    from tempomem import TempoMem
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,7 +56,7 @@ class DefaultSceneContextProvider:
     The second tuple element is the current map `version`.
     """
 
-    def __init__(self, mem: SpatialMemory, *, default_budget: int = 1500) -> None:
+    def __init__(self, mem: TempoMem, *, default_budget: int = 1500) -> None:
         self._mem = mem
         self._budget = default_budget
         self._version = 0

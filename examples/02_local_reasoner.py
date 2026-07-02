@@ -15,7 +15,7 @@ import pathlib
 import tempfile
 
 import numpy as np
-from tempomem import Detection, QueryError, SpatialMemory
+from tempomem import Detection, QueryError, TempoMem
 
 from mindloop import Brain, CosmosReasonVerbalizer, VerbalizerReasoner
 
@@ -41,7 +41,7 @@ def _det(label: str, center: tuple[float, float, float], seed: int) -> Detection
 def main() -> None:
     vb = CosmosReasonVerbalizer(base_url=BASE_URL, model=MODEL, api_key="local", max_tokens=4096)
     path = pathlib.Path(tempfile.mkdtemp()) / "room.smem"
-    with SpatialMemory.open(path, embedding_dim=DIM) as mem:
+    with TempoMem.open(path, embedding_dim=DIM) as mem:
         brain = Brain(mem, VerbalizerReasoner(vb))
         brain.ingest([_det("mug", (1.2, 0.0, 0.94), 1), _det("table", (1.4, 0.0, 0.75), 2)])
         try:

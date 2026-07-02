@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from tempomem import HashEncoder, QueryError, SpatialMemory
+from tempomem import HashEncoder, QueryError, TempoMem
 from tests.conftest import DIM, make_det
 
 from mindloop import CosmosReasonVerbalizer
@@ -95,7 +95,7 @@ def test_answer_through_facade(tmp_path) -> None:
     cap: dict = {}
     vb = CosmosReasonVerbalizer(transport=_fake_transport(cap))
     enc = HashEncoder(DIM)
-    with SpatialMemory.open(
+    with TempoMem.open(
         tmp_path / "c.smem", embedding_dim=DIM, encoder=enc, verbalizer=vb
     ) as mem:
         mem.add_detections([make_det("mug", (1.0, 0.0, 0.9), 1)])

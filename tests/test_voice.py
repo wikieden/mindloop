@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     Brain,
@@ -47,7 +47,7 @@ def test_mock_speaker_records() -> None:
 
 @pytest.fixture
 def brain(tmp_path) -> Brain:
-    mem = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=DIM)
+    mem = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
     rng = np.random.default_rng(0).standard_normal(DIM).astype("float32")
     mem.add_detections([Detection("bottle", rng / np.linalg.norm(rng), (1, 0, 0.9),
                                   (0.9, -0.1, 0.8), (1.1, 0.1, 1.0))])

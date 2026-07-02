@@ -214,7 +214,7 @@ reasoning, no lock-in; matches Chronotope's BYO-`Verbalizer` design.
 
 ## 6. Concurrency & consistency contract (v0 = single-threaded)
 
-**Honest statement of what the code does today:** `SpatialMemory` wraps one
+**Honest statement of what the code does today:** `TempoMem` wraps one
 synchronous `sqlite3.Connection`. It is **not** thread-safe; callers **must
 serialize all access**. `add_frame()` runs `adapter.process_frame()` **inline**
 â€” it blocks the caller for Cosmos's seconds-per-clip latency. There is no worker
@@ -376,12 +376,12 @@ Assume 1 keyframe clip / 5 s and a 1500-token serialize budget:
 
 ```python
 import numpy as np
-from tempomem import SpatialMemory
+from tempomem import TempoMem
 
 def stub_llm(context: str, question: str) -> str:        # swap for Claude/GPT/Ollama
     return f"(reasoning over)\n{context}\nQ: {question}"
 
-mem = SpatialMemory.open("home.smem", embedding_dim=512, encoder=my_clip)
+mem = TempoMem.open("home.smem", embedding_dim=512, encoder=my_clip)
 # C1: Cosmos-perceived detections (here: pre-made) -> fuse
 mem.add_detections([det_mug, det_table]); mem.commit()
 # C2: serialize for the cortex
@@ -391,7 +391,7 @@ hits = mem.semantic("coffee mug")                        # -> [NodeHit(node_id=â
 # REASON (Topology B): BYO LLM over ctx + tool results, cite node ids
 print(stub_llm(ctx, "where is the mug?"))
 # or one-shot via the shipped verbalizer path:
-# mem = SpatialMemory.open("home.smem", embedding_dim=512, encoder=my_clip, verbalizer=cosmos_vb)
+# mem = TempoMem.open("home.smem", embedding_dim=512, encoder=my_clip, verbalizer=cosmos_vb)
 # print(mem.answer("where is the mug?"))
 ```
 

@@ -23,7 +23,7 @@ from .execute import StatusUpdate, SubTask
 from .reason import Answer
 
 if TYPE_CHECKING:
-    from tempomem import SpatialMemory, Verbalizer
+    from tempomem import TempoMem, Verbalizer
 
     from .execute import CapabilityManifest
     from .phylax import Violation
@@ -241,7 +241,7 @@ _VERB_TABLE: dict[str, dict[str, Any]] = {
 }
 
 
-def _resolve_node_id(mem: SpatialMemory, mention: str) -> int | None:
+def _resolve_node_id(mem: TempoMem, mention: str) -> int | None:
     """Bind an object mention to its best scene-graph node id (B9), or None."""
     if not mention:
         return None
@@ -252,7 +252,7 @@ def _resolve_node_id(mem: SpatialMemory, mention: str) -> int | None:
 
 def compile_commands(
     commands: tuple[Command, ...],
-    mem: SpatialMemory,
+    mem: TempoMem,
     manifest: CapabilityManifest,
     *,
     default_speak: str = "",

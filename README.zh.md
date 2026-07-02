@@ -49,10 +49,10 @@ pip install mindloop[perception]     # + worldsense（感知眼）
 ## 快速上手（拓扑 B — 自带 LLM）
 
 ```python
-from tempomem import SpatialMemory
+from tempomem import TempoMem
 from mindloop import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
 
-mem = SpatialMemory.open("home.smem", embedding_dim=512)
+mem = TempoMem.open("home.smem", embedding_dim=512)
 brain = Brain(mem, VerbalizerReasoner(CosmosReasonVerbalizer(model="nvidia/cosmos-reason2-8b")))
 brain.ingest(detections)                 # 记忆（自带感知）
 print(brain.ask("where is the mug?"))    # 检索 -> 推理 -> 带引用的 Answer

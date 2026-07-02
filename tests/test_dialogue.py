@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     Answer,
@@ -68,8 +68,8 @@ class _FlakyBody(MockBody):
 
 
 @pytest.fixture
-def mem(tmp_path) -> SpatialMemory:
-    m = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=DIM)
+def mem(tmp_path) -> TempoMem:
+    m = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
 
     def f(s: int) -> np.ndarray:
         v = np.random.default_rng(s).standard_normal(DIM).astype("float32")
@@ -88,7 +88,7 @@ def mem(tmp_path) -> SpatialMemory:
 # --------------------------------------------------------------------------- #
 # Conversation + dialogue threading
 # --------------------------------------------------------------------------- #
-def test_history_text_renders_turns(mem: SpatialMemory) -> None:
+def test_history_text_renders_turns(mem: TempoMem) -> None:
     conv = Conversation()
     brain = Brain(mem, ScriptedReasoner({"hi": "hello [#1]"}),
                   router=ScriptedIntentRouter(default="question"), planner=ScriptedPlanner())
@@ -98,7 +98,7 @@ def test_history_text_renders_turns(mem: SpatialMemory) -> None:
     assert "Assistant: hello [#1]" in conv.history_text()
 
 
-def test_converse_threads_dialogue_history(mem: SpatialMemory) -> None:
+def test_converse_threads_dialogue_history(mem: TempoMem) -> None:
     rsn = _CtxReasoner()
     brain = Brain(mem, rsn, router=ScriptedIntentRouter(default="question"),
                   planner=ScriptedPlanner())
@@ -129,7 +129,7 @@ def _laundry_planner(manifest) -> SkillCardPlanner:
     return SkillCardPlanner(SkillLibrary([card]), manifest)
 
 
-def test_preference_overrides_card_default(mem: SpatialMemory) -> None:
+def test_preference_overrides_card_default(mem: TempoMem) -> None:
     body = MockBody()
     prefs = DictPreferenceStore({"alice": {"program": "eco", "bogus": "x"}})
     brain = Brain(mem, ScriptedReasoner(), router=ScriptedIntentRouter(default="task"),
@@ -149,7 +149,7 @@ def test_preference_overrides_card_default(mem: SpatialMemory) -> None:
 # --------------------------------------------------------------------------- #
 # M-L3.3 end-to-end scenario: one conversation through the whole loop
 # --------------------------------------------------------------------------- #
-def test_full_loop_scenario(mem: SpatialMemory) -> None:
+def test_full_loop_scenario(mem: TempoMem) -> None:
     body = _FlakyBody({"grasp": ErrorCode.GRASP_FAILED})
     trace = TraceStore(":memory:")
     brain = Brain(

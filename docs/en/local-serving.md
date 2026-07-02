@@ -58,7 +58,7 @@ newer than `1.6.0` before deploying.
 ## Wire it (one line — `base_url`)
 
 ```python
-from tempomem import SpatialMemory
+from tempomem import TempoMem
 from mindloop import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
 
 vb = CosmosReasonVerbalizer(
@@ -67,7 +67,7 @@ vb = CosmosReasonVerbalizer(
     api_key="local",                        # vLLM doesn't enforce; placeholder
     max_tokens=4096,                        # Cosmos recommends 4096 (avoid truncation)
 )
-brain = Brain(SpatialMemory.open("home.smem", embedding_dim=512), VerbalizerReasoner(vb))
+brain = Brain(TempoMem.open("home.smem", embedding_dim=512), VerbalizerReasoner(vb))
 print(brain.ask("where is the mug?"))
 ```
 

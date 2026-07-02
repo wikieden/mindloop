@@ -55,7 +55,7 @@ docker run --rm --runtime=nvidia --gpus all --shm-size=32GB \
 ## 接入（一行代码 — `base_url`）
 
 ```python
-from tempomem import SpatialMemory
+from tempomem import TempoMem
 from mindloop import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
 
 vb = CosmosReasonVerbalizer(
@@ -64,7 +64,7 @@ vb = CosmosReasonVerbalizer(
     api_key="local",                        # vLLM 不强制校验；此处为占位符
     max_tokens=4096,                        # Cosmos 建议 4096（避免截断）
 )
-brain = Brain(SpatialMemory.open("home.smem", embedding_dim=512), VerbalizerReasoner(vb))
+brain = Brain(TempoMem.open("home.smem", embedding_dim=512), VerbalizerReasoner(vb))
 print(brain.ask("where is the mug?"))
 ```
 

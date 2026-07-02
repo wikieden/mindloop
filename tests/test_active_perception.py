@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     ActivePerception,
@@ -41,8 +41,8 @@ class _CountPlanner:
 
 
 @pytest.fixture
-def mem(tmp_path) -> SpatialMemory:
-    m = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=DIM)
+def mem(tmp_path) -> TempoMem:
+    m = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
     m.add_detections([_det("apple", 1, (1.0, 0.0, 0.9))])
     m.commit()
     return m
@@ -70,7 +70,7 @@ def test_scripted_perception_fires_once_per_step() -> None:
     assert ap.perceive(step_index=1, last_status=None) is None
 
 
-def test_relook_triggers_bounded_tail_replan(mem: SpatialMemory) -> None:
+def test_relook_triggers_bounded_tail_replan(mem: TempoMem) -> None:
     planner = _CountPlanner((Command("navigate", ("apple",)), Command("grasp", ("apple",))))
     provider = DefaultSceneContextProvider(mem)
     # a new object appears just before step 1 (the grasp)
@@ -87,14 +87,14 @@ def test_relook_triggers_bounded_tail_replan(mem: SpatialMemory) -> None:
     assert r.statuses[-1].status == TaskStatus.SUCCESS
 
 
-def test_no_perception_plans_once(mem: SpatialMemory) -> None:
+def test_no_perception_plans_once(mem: TempoMem) -> None:
     planner = _CountPlanner((Command("navigate", ("apple",)), Command("grasp", ("apple",))))
     brain = _brain(mem, planner)
     brain.handle("fetch the apple")
     assert planner.calls == 1  # no re-look, no re-plan
 
 
-def test_tail_replan_is_bounded(mem: SpatialMemory) -> None:
+def test_tail_replan_is_bounded(mem: TempoMem) -> None:
     # perception would re-look at every step, but max_tail_replans caps it
     planner = _CountPlanner((Command("navigate", ("apple",)), Command("grasp", ("apple",))))
     ap = ScriptedPerception({0: [_det("a", 3, (0, 0, 0.4))], 1: [_det("b", 4, (0, 0, 0.6))]})

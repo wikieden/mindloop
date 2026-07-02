@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     Brain,
@@ -51,7 +51,7 @@ class _FlakyBody(MockBody):
 
 @pytest.fixture
 def brain(tmp_path) -> Brain:
-    mem = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=DIM)
+    mem = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
 
     def f(s: int) -> np.ndarray:
         v = np.random.default_rng(s).standard_normal(DIM).astype("float32")

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     Answer,
@@ -68,8 +68,8 @@ class _CtxReasoner:
 
 
 @pytest.fixture
-def mem(tmp_path) -> SpatialMemory:
-    m = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=DIM)
+def mem(tmp_path) -> TempoMem:
+    m = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
     rng = np.random.default_rng(0).standard_normal(DIM).astype("float32")
     m.add_detections([Detection("apple", rng / np.linalg.norm(rng), (1, 0, 0.9),
                                 (0.9, -0.1, 0.8), (1.1, 0.1, 1.0))])
@@ -77,7 +77,7 @@ def mem(tmp_path) -> SpatialMemory:
     return m
 
 
-def test_success_writes_effects_into_world(mem: SpatialMemory) -> None:
+def test_success_writes_effects_into_world(mem: TempoMem) -> None:
     body = MockBody()
     brain = Brain(
         mem,
@@ -93,7 +93,7 @@ def test_success_writes_effects_into_world(mem: SpatialMemory) -> None:
     assert brain.world.get("robot.holding") == "apple"
 
 
-def test_world_state_injected_into_next_context(mem: SpatialMemory) -> None:
+def test_world_state_injected_into_next_context(mem: TempoMem) -> None:
     rsn = _CtxReasoner()
     brain = Brain(
         mem,

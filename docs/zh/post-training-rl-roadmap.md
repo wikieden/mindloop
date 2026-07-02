@@ -59,7 +59,7 @@ reward =  w1 · task_success        # 答案与 ground truth 匹配（eval harne
 
 大脑设计 §16"记忆优势评估"——*只有依赖跨 clip/跨 session 持久化才能回答的问题*（clip 1 中看到的物体，在 clip 9 中被询问）——**即 RL 环境本身。** 每个 episode：
 
-- 将一段 clip 流回放到一个全新的 `SpatialMemory` store，
+- 将一段 clip 流回放到一个全新的 `TempoMem` store，
 - 提出一个需要依赖持久化记忆才能回答的问题，
 - 让皮层通过工具执行动作，
 - 用上述奖励函数打分。

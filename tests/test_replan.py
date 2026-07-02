@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     Brain,
@@ -145,8 +145,8 @@ class _FlakyBody(MockBody):
 
 
 @pytest.fixture
-def mem(tmp_path) -> SpatialMemory:
-    m = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=DIM)
+def mem(tmp_path) -> TempoMem:
+    m = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
     rng = np.random.default_rng(0).standard_normal(DIM).astype("float32")
     m.add_detections(
         [
@@ -159,7 +159,7 @@ def mem(tmp_path) -> SpatialMemory:
     return m
 
 
-def _brain(mem: SpatialMemory, body: MockBody, trace: TraceStore | None = None) -> Brain:
+def _brain(mem: TempoMem, body: MockBody, trace: TraceStore | None = None) -> Brain:
     return Brain(
         mem,
         ScriptedReasoner(),
@@ -171,7 +171,7 @@ def _brain(mem: SpatialMemory, body: MockBody, trace: TraceStore | None = None) 
     )
 
 
-def test_handle_recovers_via_replan(mem: SpatialMemory) -> None:
+def test_handle_recovers_via_replan(mem: TempoMem) -> None:
     trace = TraceStore(":memory:")
     brain = _brain(mem, _FlakyBody({"grasp": ErrorCode.GRASP_FAILED}), trace)
     r = brain.handle("go")
@@ -184,7 +184,7 @@ def test_handle_recovers_via_replan(mem: SpatialMemory) -> None:
     trace.close()
 
 
-def test_handle_escalates_when_unrepairable(mem: SpatialMemory) -> None:
+def test_handle_escalates_when_unrepairable(mem: TempoMem) -> None:
     # a permanent failure -> bounded retries -> escalate (stop + speak, no infinite loop)
     brain = _brain(mem, MockBody(fail={"grasp": ErrorCode.GRASP_FAILED}))
     r = brain.handle("go")
@@ -192,7 +192,7 @@ def test_handle_escalates_when_unrepairable(mem: SpatialMemory) -> None:
     assert r.plan is not None and "grasp" in r.plan.speak.lower()  # escalation spoken
 
 
-def test_no_replanner_dispatches_once(mem: SpatialMemory) -> None:
+def test_no_replanner_dispatches_once(mem: TempoMem) -> None:
     # without a replanner, a failure is just reported (P1-P3 behavior preserved)
     brain = Brain(
         mem,

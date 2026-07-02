@@ -49,10 +49,10 @@ full-stack extra.)
 ## Quickstart (Topology B — BYO LLM)
 
 ```python
-from tempomem import SpatialMemory
+from tempomem import TempoMem
 from mindloop import Brain, VerbalizerReasoner, CosmosReasonVerbalizer
 
-mem = SpatialMemory.open("home.smem", embedding_dim=512)
+mem = TempoMem.open("home.smem", embedding_dim=512)
 brain = Brain(mem, VerbalizerReasoner(CosmosReasonVerbalizer(model="nvidia/cosmos-reason2-8b")))
 brain.ingest(detections)                 # remember (BYO perception)
 print(brain.ask("where is the mug?"))    # retrieve -> reason -> cited Answer

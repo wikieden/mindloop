@@ -43,7 +43,7 @@ The cognitive loop already shipping here, extended with planning:
 ```
 user/world event
   → intent routing (task? question? chat?)
-  → retrieve: SpatialMemory.query(k) → serialize(node_ids=hits)   # cited context
+  → retrieve: TempoMem.query(k) → serialize(node_ids=hits)   # cited context
   → reason: Reasoner (LLM) → plan in skill verbs, or Answer(text, cited_node_ids)
   → policy check (Phylax, §6) → dispatch to Habit via ExecutorAdapter
   → on failure report: replan (failure hints from the skill card, §5)
@@ -54,7 +54,7 @@ node ids; answers cite node ids. The audit chain from camera pixel to actuator
 command never breaks.
 
 Absorbed from Brain2Robot (the experimental repo): intent router, task
-planner, replanner, dialogue engine — re-implemented against `SpatialMemory`
+planner, replanner, dialogue engine — re-implemented against `TempoMem`
 instead of B2R's hand-rolled scene graph / WorldState.
 
 ### 2.2 Habit (S1) — behind the executor seam

@@ -210,7 +210,7 @@ Cosmos 仅负责感知（C1）。自带 LLM（Claude/GPT/Llama/Ollama）基于
 
 ## 6. 并发与一致性契约（v0 = 单线程）
 
-**关于当前代码行为的如实说明：** `SpatialMemory` 封装了一个
+**关于当前代码行为的如实说明：** `TempoMem` 封装了一个
 同步 `sqlite3.Connection`。它**不是**线程安全的；调用方**必须
 串行化所有访问**。`add_frame()` **内联**运行 `adapter.process_frame()`
 ——会为 Cosmos 的秒级/片段延迟阻塞调用方。目前尚无工作线程
@@ -366,12 +366,12 @@ PERCEIVE→REMEMBER→REASON→ACT 全链路贯穿一个 **tick/trace id**。
 
 ```python
 import numpy as np
-from tempomem import SpatialMemory
+from tempomem import TempoMem
 
 def stub_llm(context: str, question: str) -> str:        # swap for Claude/GPT/Ollama
     return f"(reasoning over)\n{context}\nQ: {question}"
 
-mem = SpatialMemory.open("home.smem", embedding_dim=512, encoder=my_clip)
+mem = TempoMem.open("home.smem", embedding_dim=512, encoder=my_clip)
 # C1: Cosmos-perceived detections (here: pre-made) -> fuse
 mem.add_detections([det_mug, det_table]); mem.commit()
 # C2: serialize for the cortex
@@ -381,7 +381,7 @@ hits = mem.semantic("coffee mug")                        # -> [NodeHit(node_id=�
 # REASON (Topology B): BYO LLM over ctx + tool results, cite node ids
 print(stub_llm(ctx, "where is the mug?"))
 # or one-shot via the shipped verbalizer path:
-# mem = SpatialMemory.open("home.smem", embedding_dim=512, encoder=my_clip, verbalizer=cosmos_vb)
+# mem = TempoMem.open("home.smem", embedding_dim=512, encoder=my_clip, verbalizer=cosmos_vb)
 # print(mem.answer("where is the mug?"))
 ```
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from bodylink import MockBody
-from tempomem import Detection, SpatialMemory
+from tempomem import Detection, TempoMem
 
 from mindloop import (
     Brain,
@@ -33,8 +33,8 @@ class _CountBody(MockBody):
 
 
 @pytest.fixture
-def mem(tmp_path) -> SpatialMemory:
-    m = SpatialMemory.open(tmp_path / "s.smem", embedding_dim=DIM)
+def mem(tmp_path) -> TempoMem:
+    m = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
     rng = np.random.default_rng(0).standard_normal(DIM).astype("float32")
     m.add_detections([Detection("apple", rng / np.linalg.norm(rng), (1, 0, 0.9),
                                 (0.9, -0.1, 0.8), (1.1, 0.1, 1.0))])
@@ -42,7 +42,7 @@ def mem(tmp_path) -> SpatialMemory:
     return m
 
 
-def _brain(mem: SpatialMemory, body: MockBody, plan: dict) -> Brain:
+def _brain(mem: TempoMem, body: MockBody, plan: dict) -> Brain:
     return Brain(
         mem,
         ScriptedReasoner(),
@@ -52,7 +52,7 @@ def _brain(mem: SpatialMemory, body: MockBody, plan: dict) -> Brain:
     )
 
 
-def test_second_grasp_of_same_object_is_skipped(mem: SpatialMemory) -> None:
+def test_second_grasp_of_same_object_is_skipped(mem: TempoMem) -> None:
     body = _CountBody()
     brain = _brain(mem, body, {"go": (Command("grasp", ("apple",)), Command("grasp", ("apple",)))})
     r = brain.handle("go")
@@ -64,7 +64,7 @@ def test_second_grasp_of_same_object_is_skipped(mem: SpatialMemory) -> None:
     assert brain.world.get("robot.holding") == "apple"
 
 
-def test_distinct_steps_are_not_skipped(mem: SpatialMemory) -> None:
+def test_distinct_steps_are_not_skipped(mem: TempoMem) -> None:
     body = _CountBody()
     plan = {"go": (Command("navigate", ("apple",)), Command("grasp", ("apple",)))}
     brain = _brain(mem, body, plan)
@@ -73,7 +73,7 @@ def test_distinct_steps_are_not_skipped(mem: SpatialMemory) -> None:
     assert body.calls == ["navigate", "grasp"]
 
 
-def test_no_effect_step_is_never_skipped(mem: SpatialMemory) -> None:
+def test_no_effect_step_is_never_skipped(mem: TempoMem) -> None:
     body = _CountBody()
     brain = _brain(mem, body, {"go": (Command("detect", ()), Command("detect", ()))})
     brain.handle("go")

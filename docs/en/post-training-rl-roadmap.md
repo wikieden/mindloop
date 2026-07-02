@@ -88,7 +88,7 @@ The brain design §16 "memory-advantage eval" — *questions answerable only wit
 cross-clip/cross-session persistence* (object seen in clip 1, asked in clip 9) —
 **is the RL environment.** Each episode:
 
-- replay a clip stream into a fresh `SpatialMemory` store,
+- replay a clip stream into a fresh `TempoMem` store,
 - pose a question whose answer requires the persisted memory,
 - let the cortex act through the tools,
 - score with the reward function above.
