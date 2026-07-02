@@ -268,7 +268,7 @@ reasoner + eval).
 | **all members → own repos** | ✅ done (2026-06-29) | skillforge + voicelink also graduated; **all 6 members are now private repos + root submodules** — root holds only wiring + docs |
 | **D3 body track** (real HW adapter, BT/reflex Phylax tiers) | pending | tracked in bodylink design doc + TECH-DESIGN, not phased here |
 | **Dynamic scene context** (active perception) | ✅ phases 1–4 done | seam + `WorldState` write-back + idempotent dispatch + active-perception tail re-plan — the perceive-act-update cycle is closed; see research/dynamic-scene-context.md |
-| **Task families + execution dynamics** | planned (2026-06-30) | cross-cutting plan in root [TASK-FAMILIES.md](../../../../docs/en/TASK-FAMILIES.md). mindloop work: `BargeClassifier` (D2), brain-level `Clarifier` + `ReplanAction.ASK_HUMAN` (D3), param-scoped `(verb,param)` gating for stove/sharp (D1), region-access on existing `Role`, new `_VERB_TABLE` verbs (present/wipe/pour/dispose) + region-encoding `place` effect. Family eval thresholds **ratified** — supersedes the proposed-P6-thresholds row above |
+| **Task families + execution dynamics** | ◐ in progress (2026-07-02) | cross-cutting plan in root [TASK-FAMILIES.md](../../../../docs/en/TASK-FAMILIES.md); live status in root [DEV-STATUS.md](../../../../docs/en/DEV-STATUS.md). tempomem semantic Tier-1 landed first; mindloop work not yet started: `BargeClassifier` (D2), brain-level `Clarifier` + `ReplanAction.ASK_HUMAN` (D3), param-scoped `(verb,param)` gating for stove/sharp (D1), region-access on existing `Role`, new `_VERB_TABLE` verbs (present/wipe/pour/dispose) + region-encoding `place` effect. Family eval thresholds **ratified** — supersedes the proposed-P6-thresholds row above |
 
 ---
 
