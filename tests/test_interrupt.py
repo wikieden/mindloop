@@ -65,7 +65,7 @@ def test_new_instruction_supersedes() -> None:
 def test_correction_markers_win_over_task_intent() -> None:
     clf = _clf()
     assert clf.classify("no, the red one").kind == "correction"
-    assert clf.classify("不对，是红色那个").kind == "correction"
+    assert clf.classify("不对，是红色那个").kind == "correction"  # noqa: RUF001
 
 
 def test_decision_carries_the_utterance() -> None:

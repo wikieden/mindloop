@@ -18,7 +18,9 @@ from .dialogue import Conversation
 from .episteme import manifest_param_keys
 from .errors import BrainError
 from .execute import StatusUpdate, TaskStatus
+from .execute import SubTask as _SubTask
 from .health import HealthReport
+from .interrupt import BargeClassifier, BargeDecision
 from .phylax import refusal_speak
 from .plan import HandleResult, Plan, compile_commands
 from .reason import Answer, Reasoner
@@ -32,12 +34,14 @@ if TYPE_CHECKING:
 
     from .active_perception import ActivePerception
     from .execute import CapabilityManifest, ExecutorAdapter, SubTask
+    from .interrupt import InterruptSource
     from .phylax import Phylax, SafetyContext
     from .plan import IntentRouter, Planner
     from .preference import PreferenceStore
     from .replan import Replanner
     from .scene_context import SceneContextProvider
     from .trace import TraceStore
+    from .voice import Speaker
 
 
 class Brain:
@@ -68,6 +72,9 @@ class Brain:
         active_perception: ActivePerception | None = None,
         max_tail_replans: int = 1,
         default_speak: str = "OK.",
+        interrupts: InterruptSource | None = None,
+        barge: BargeClassifier | None = None,
+        speaker: Speaker | None = None,
     ) -> None:
         self._mem = mem
         self._reasoner = reasoner
@@ -84,6 +91,13 @@ class Brain:
         # detections can trigger a bounded tail re-plan from fresh context.
         self._perception = active_perception
         self._max_tail_replans = max(0, max_tail_replans)
+        # Barge-in (3b, D2/D-E): a non-blocking utterance inbox polled between
+        # steps; the classifier decides resume/supersede/correct/abort. The
+        # optional speaker voices inline answers and the abort acknowledgement.
+        self._interrupts = interrupts
+        self._barge = barge
+        self._speaker = speaker
+        self._barge_n = 0
         self._router = router
         self._planner = planner
         self._executor = executor
@@ -324,6 +338,28 @@ class Brain:
         replans = 0
         i = 0
         while i < len(subs):
+            # (0) barge-in (3b): poll the interrupt inbox between steps (D-E
+            # precision — a step in progress finishes first; mid-step preemption
+            # needs the bodylink cancel/pause/resume handshake, deferred to P4).
+            if self._interrupts is not None:
+                utt = self._interrupts.poll()
+                if utt is not None:
+                    act, payload = self._handle_barge(
+                        utt,
+                        instruction,
+                        manifest,
+                        person,
+                        k=k,
+                        safety_context=safety_context,
+                        session=session,
+                    )
+                    if act == "abort":
+                        return tuple(statuses), payload
+                    if act == "replace":
+                        new_subs, instruction = payload
+                        subs = subs[:i] + new_subs
+                        continue
+                    # "resume": answered inline — carry on with the current step
             sub = subs[i]
 
             # (1) active perception (dynamic-scene P4) — re-look between steps
@@ -362,6 +398,67 @@ class Brain:
             statuses.append(st)
             i += 1
         return tuple(statuses), None
+
+    def _handle_barge(
+        self,
+        utterance: str,
+        instruction: str,
+        manifest: CapabilityManifest,
+        person: str,
+        *,
+        k: int,
+        safety_context: SafetyContext | None,
+        session: str,
+    ) -> tuple[str, Any]:
+        """Act on a mid-task utterance (3b): returns one of
+        ``("abort", speak)`` / ``("resume", None)`` / ``("replace", (subs, goal))``.
+
+        A barge-triggered re-plan (supersede/correction) is **re-vetted by
+        Phylax** before it replaces anything — a barge-in must not smuggle a
+        blocked action past the gate. Every decision is traced (verb
+        ``barge_in``) so interrupt handling stays auditable.
+        """
+        clf = self._barge or (BargeClassifier(self._router) if self._router is not None else None)
+        if clf is None:  # no router to classify with: ignore rather than guess
+            return ("resume", None)
+        decision = clf.classify(utterance)
+        self._trace_barge(decision, session)
+        if decision.kind == "abort":
+            speak = "Okay — stopping."
+            if self._speaker is not None:
+                self._speaker.say(speak)
+            return ("abort", speak)
+        if decision.kind == "answer_resume":
+            ans = self.ask(utterance, k=k)
+            if self._speaker is not None:
+                self._speaker.say(ans.text)
+            return ("resume", None)
+        # supersede: the utterance IS the new goal; correction: same goal + fix
+        goal = utterance if decision.kind == "supersede" else f"{instruction} ({utterance})"
+        new_plan = self._plan_task(goal, manifest, person, k=k)
+        if self._policy is not None:
+            viol = self._policy.check(new_plan, safety_context)
+            if viol:
+                return ("abort", refusal_speak(viol))
+        return ("replace", (list(new_plan.subtasks), goal))
+
+    def _trace_barge(self, decision: BargeDecision, session: str) -> None:
+        if self._trace is None:
+            return
+        self._barge_n += 1
+        sub = _SubTask(
+            id=f"barge-{self._barge_n}",
+            verb="barge_in",
+            params={"kind": decision.kind, "utterance": decision.utterance},
+        )
+        st = StatusUpdate(
+            "",
+            sub.id,
+            TaskStatus.SUCCESS,
+            progress=1.0,
+            message=f"barge_in:{decision.kind} {decision.utterance!r}",
+        )
+        self._trace.log_attempt(sub, st, session_id=session)
 
     def _repair(
         self, sub: SubTask, st: StatusUpdate, safety_context: SafetyContext | None, session: str
