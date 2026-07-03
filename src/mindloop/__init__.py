@@ -43,6 +43,12 @@ from .execute import (
     VerbSpec,
 )
 from .health import HealthReport
+from .interrupt import (
+    BargeClassifier,
+    BargeDecision,
+    InterruptSource,
+    QueueInterruptSource,
+)
 from .menu import MenuKB, load_menu
 from .phylax import (
     Phylax,
@@ -103,6 +109,10 @@ __all__ = [
     "HealthReport",
     "IntentRouter",
     "Listener",
+    "BargeClassifier",
+    "BargeDecision",
+    "InterruptSource",
+    "QueueInterruptSource",
     "MenuKB",
     "MockListener",
     "MockSpeaker",
