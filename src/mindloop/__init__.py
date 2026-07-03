@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from .active_perception import ActivePerception, ScriptedPerception
 from .brain import Brain
+from .clarify import Clarifier, ScriptedClarifier
 from .dialogue import Conversation, Turn
 from .episteme import (
     Rule,
@@ -93,6 +94,7 @@ __all__ = [
     "BrainError",
     "CapabilityManifest",
     "CitationReport",
+    "Clarifier",
     "Command",
     "Conversation",
     "CosmosReasonVerbalizer",
@@ -131,6 +133,7 @@ __all__ = [
     "Rule",
     "SafetyContext",
     "SceneContextProvider",
+    "ScriptedClarifier",
     "ScriptedIntentRouter",
     "ScriptedPerception",
     "ScriptedPlanner",

@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from tempomem import Detection, PerceptionAdapter, TempoMem
 
     from .active_perception import ActivePerception
+    from .clarify import Clarifier
     from .execute import CapabilityManifest, ExecutorAdapter, SubTask
     from .interrupt import InterruptSource
     from .phylax import Phylax, SafetyContext
@@ -75,6 +76,8 @@ class Brain:
         interrupts: InterruptSource | None = None,
         barge: BargeClassifier | None = None,
         speaker: Speaker | None = None,
+        clarifier: Clarifier | None = None,
+        ask_budget: int = 2,
     ) -> None:
         self._mem = mem
         self._reasoner = reasoner
@@ -98,6 +101,12 @@ class Brain:
         self._barge = barge
         self._speaker = speaker
         self._barge_n = 0
+        # Ask-human seam (3b, D3): a reachable dead-end ESCALATE asks a targeted
+        # question instead of giving up; ≤ ask_budget asks per task (reset per
+        # task, ratified) and the answer's re-plan is re-vetted by Phylax.
+        self._clarifier = clarifier
+        self._ask_budget = max(0, ask_budget)
+        self._ask_n = 0
         self._router = router
         self._planner = planner
         self._executor = executor
@@ -336,6 +345,7 @@ class Brain:
         subs = list(plan.subtasks)
         statuses: list[StatusUpdate] = []
         replans = 0
+        ask_left = self._ask_budget  # D3: budget resets per task
         i = 0
         while i < len(subs):
             # (0) barge-in (3b): poll the interrupt inbox between steps (D-E
@@ -393,6 +403,27 @@ class Brain:
             if st.status.value == "failed" and self._replanner is not None:
                 st, escalation = self._repair(sub, st, safety_context, session)
                 if escalation is not None:
+                    # 3b (D3): a dead-end ESCALATE asks a human before giving up —
+                    # bounded by the per-task ask budget, answer re-vetted below.
+                    if self._clarifier is not None and ask_left > 0:
+                        ask_left -= 1
+                        question = f"I'm stuck: {escalation} What should I do?"
+                        answer = self._clarifier.clarify(question)
+                        self._trace_ask(question, answer, session)
+                        if answer:
+                            goal = f"{instruction} ({answer})"
+                            new_plan = self._plan_task(goal, manifest, person, k=k)
+                            if self._policy is not None:
+                                viol = self._policy.check(new_plan, safety_context)
+                                if viol:
+                                    # the answer is an instruction: a blocked one
+                                    # refuses, it never sneaks past the gate
+                                    statuses.append(st)
+                                    return tuple(statuses), refusal_speak(viol)
+                            statuses.append(st)
+                            instruction = goal
+                            subs = subs[:i] + list(new_plan.subtasks)
+                            continue
                     statuses.append(st)
                     return tuple(statuses), escalation  # safety-class stop: end plan
             statuses.append(st)
@@ -457,6 +488,24 @@ class Brain:
             TaskStatus.SUCCESS,
             progress=1.0,
             message=f"barge_in:{decision.kind} {decision.utterance!r}",
+        )
+        self._trace.log_attempt(sub, st, session_id=session)
+
+    def _trace_ask(self, question: str, answer: str | None, session: str) -> None:
+        if self._trace is None:
+            return
+        self._ask_n += 1
+        sub = _SubTask(
+            id=f"ask-{self._ask_n}",
+            verb="ask_human",
+            params={"question": question, "answer": answer or ""},
+        )
+        st = StatusUpdate(
+            "",
+            sub.id,
+            TaskStatus.SUCCESS if answer else TaskStatus.FAILED,
+            progress=1.0,
+            message=f"ask_human -> {answer!r}",
         )
         self._trace.log_attempt(sub, st, session_id=session)
 
