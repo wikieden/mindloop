@@ -76,6 +76,7 @@ from .plan import (
 from .preference import DictPreferenceStore, PreferenceStore
 from .reason import Answer, Reasoner, ScriptedReasoner, ToolCall, VerbalizerReasoner
 from .replan import ReplanAction, ReplanDecision, Replanner
+from .role import RoleBundle, effective_verbs, load_role
 from .scene_context import DefaultSceneContextProvider, Focus, SceneContextProvider
 from .trace import TraceRecord, TraceStore
 from .verbalizers import CosmosReasonVerbalizer, FailoverVerbalizer, strip_reasoning
@@ -130,6 +131,7 @@ __all__ = [
     "ReplanDecision",
     "Replanner",
     "Role",
+    "RoleBundle",
     "Rule",
     "SafetyContext",
     "SceneContextProvider",
@@ -160,10 +162,12 @@ __all__ = [
     "WorldState",
     "citation_compliance",
     "compile_commands",
+    "effective_verbs",
     "extract_slots",
     "instantiate",
     "load_cards",
     "load_menu",
+    "load_role",
     "parse_commands",
     "parse_effect",
     "refusal_speak",

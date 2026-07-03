@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from .episteme import SkillCard
     from .menu import MenuKB
     from .plan import Plan
+    from .role import RoleBundle
 
 _log = logging.getLogger("mindloop.phylax")
 
@@ -311,6 +312,18 @@ class Phylax:
                         )
                     )
         return tuple(out)
+
+    def vet_role(self, bundle: RoleBundle) -> bool:
+        """True if a role bundle may be activated (D-O): its `provenance` must
+        be trusted — the same signature/review primitive as skill cards."""
+        if bundle.provenance not in self._policy.trusted_provenances:
+            _log.warning(
+                "refused role bundle %r: untrusted provenance %r",
+                bundle.role,
+                bundle.provenance,
+            )
+            return False
+        return True
 
     def vet_card(self, card: SkillCard) -> bool:
         """True if a skill card may be honored. A card carrying `safety:` from an
