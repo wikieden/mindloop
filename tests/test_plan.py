@@ -167,3 +167,44 @@ def test_handle_task_without_executor_raises(mem: TempoMem) -> None:
     )
     with pytest.raises(BrainError):
         brain.handle("go")
+
+
+# ---------------------------------------------------------------------------
+# Task-family verbs (TASK-FAMILIES step 1) + fix B (place encodes location)
+# ---------------------------------------------------------------------------
+
+
+def test_compile_place_effect_encodes_location(mem: TempoMem) -> None:
+    plan = compile_commands(
+        (Command("place", ("bottle", "shelf")),), mem, MockBody().capabilities()
+    )
+    st = plan.subtasks[0]
+    assert "robot.placed=bottle@shelf" in st.effects
+    assert "robot.hand=empty" in st.effects
+
+
+def test_compile_new_family_verb_gets_metadata(mem: TempoMem) -> None:
+    plan = compile_commands((Command("wipe", ("bottle",)),), mem, MockBody().capabilities())
+    st = plan.subtasks[0]
+    assert st.verb == "wipe"
+    assert st.skill == "wipe_surface"
+    assert "robot.near=bottle" in st.preconditions
+    assert "bottle.status=clean" in st.effects
+    assert st.target_node_ids  # bound
+
+
+def test_compile_two_arg_verb_fills_location_template(mem: TempoMem) -> None:
+    plan = compile_commands(
+        (Command("pour", ("water", "bottle")),), mem, MockBody().capabilities()
+    )
+    st = plan.subtasks[0]
+    assert "bottle.contains=water" in st.effects
+
+
+def test_all_family_verbs_pass_the_manifest_gate(mem: TempoMem) -> None:
+    verbs = ("present", "wipe", "pour", "dispose", "sweep", "vacuum", "mop",
+             "warn_wet_floor", "restock", "greet", "take_order", "offer", "deliver")
+    plan = compile_commands(
+        tuple(Command(v, ("bottle",)) for v in verbs), mem, MockBody().capabilities()
+    )
+    assert tuple(s.verb for s in plan.subtasks) == verbs  # none dropped by D3

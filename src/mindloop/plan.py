@@ -224,7 +224,9 @@ _VERB_TABLE: dict[str, dict[str, Any]] = {
     "place": {
         "skill": "place_object",
         "pre": ("robot.holding={target}",),
-        "eff": ("robot.placed={target}", "robot.hand=empty"),
+        # the effect encodes WHERE (fix B) so region-relative placement is
+        # visible to WorldState / idempotent dispatch
+        "eff": ("robot.placed={target}@{location}", "robot.hand=empty"),
     },
     "open_door": {
         "skill": "open_joint",
@@ -237,6 +239,65 @@ _VERB_TABLE: dict[str, dict[str, Any]] = {
         "skill": "charge",
         "pre": ("robot.near=charger",),
         "eff": ("robot.charging=true",),
+    },
+    # Task-family verbs (TASK-FAMILIES step 1). `{location}` is the second arg
+    # (compile fills it; empty when absent). `deliver` is planner-facing — the
+    # two-pass macro expansion (D-D) lands with the harness tranche; until then
+    # it compiles as a single subtask the mock realizes generically.
+    "present": {
+        "skill": "present",
+        "pre": ("robot.near={target}",),
+        "eff": ("robot.presented={target}",),
+    },
+    "wipe": {
+        "skill": "wipe_surface",
+        "pre": ("robot.near={target}", "robot.hand=empty"),
+        "eff": ("{target}.status=clean",),
+    },
+    "pour": {
+        "skill": "pour_liquid",
+        "pre": ("robot.holding={target}",),
+        "eff": ("{location}.contains={target}",),
+    },
+    "dispose": {
+        "skill": "dispose",
+        "pre": ("robot.holding={target}",),
+        "eff": ("{target}.disposed=true", "robot.hand=empty"),
+    },
+    "sweep": {"skill": "sweep_floor", "eff": ("{target}.status=swept",)},
+    "vacuum": {"skill": "vacuum_floor", "eff": ("{target}.status=vacuumed",)},
+    "mop": {
+        "skill": "mop_floor",
+        "eff": ("{target}.status=mopped", "{target}.floor=wet"),
+    },
+    "warn_wet_floor": {
+        "skill": "speak_warning",
+        "eff": ("{target}.warned=wet_floor",),
+    },
+    "restock": {
+        "skill": "restock",
+        "pre": ("robot.holding={target}",),
+        "eff": ("{location}.stocked={target}", "robot.hand=empty"),
+    },
+    "greet": {
+        "skill": "greet",
+        "pre": ("robot.near={target}",),
+        "eff": ("robot.greeted={target}",),
+    },
+    "take_order": {
+        "skill": "take_order",
+        "pre": ("robot.near={target}",),
+        "eff": ("robot.order_taken={target}",),
+    },
+    "offer": {
+        "skill": "offer_item",
+        "pre": ("robot.holding={target}",),
+        "eff": ("robot.offered={target}",),
+    },
+    "deliver": {  # macro: navigate+offer (D-D expansion lands in T3)
+        "skill": "deliver",
+        "pre": ("robot.holding={target}",),
+        "eff": ("robot.delivered={target}",),
     },
 }
 
@@ -290,6 +351,9 @@ def compile_commands(
         meta = _VERB_TABLE.get(verb, {})
         target_ids = tuple(nid for a in cmd.args if (nid := _resolve_node_id(mem, a)) is not None)
         target_str = cmd.args[0] if cmd.args else ""
+        # `{location}` in pre/eff templates is the second arg (place's region
+        # anchor, pour's container, restock's destination) — empty when absent
+        location_str = cmd.args[1] if len(cmd.args) > 1 else ""
         # table defaults first, then upstream command params (skill-card rules) win
         params = {**meta.get("params", {}), **cmd.params}
         subtasks.append(
@@ -299,8 +363,12 @@ def compile_commands(
                 target_node_ids=target_ids,
                 params=params,
                 skill=str(meta.get("skill", "")),
-                preconditions=tuple(p.format(target=target_str) for p in meta.get("pre", ())),
-                effects=tuple(e.format(target=target_str) for e in meta.get("eff", ())),
+                preconditions=tuple(
+                    p.format(target=target_str, location=location_str) for p in meta.get("pre", ())
+                ),
+                effects=tuple(
+                    e.format(target=target_str, location=location_str) for e in meta.get("eff", ())
+                ),
                 timeout_s=float(meta.get("timeout", 30.0)),
             )
         )

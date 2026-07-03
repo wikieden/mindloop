@@ -241,7 +241,11 @@ class Brain:
                 return HandleResult(intent=intent, plan=blocked, violations=violations)
 
         statuses, escalation = self._dispatch_plan(
-            plan, instruction=instruction, manifest=manifest, person=person, k=k,
+            plan,
+            instruction=instruction,
+            manifest=manifest,
+            person=person,
+            k=k,
             safety_context=safety_context,
         )
         if escalation is not None:
@@ -269,9 +273,7 @@ class Brain:
             plan = self._overlay_preferences(plan, person, manifest)
         return plan
 
-    def _overlay_preferences(
-        self, plan: Plan, person: str, manifest: CapabilityManifest
-    ) -> Plan:
+    def _overlay_preferences(self, plan: Plan, person: str, manifest: CapabilityManifest) -> Plan:
         """Overlay a person's L5 preferences onto each subtask's params (P5).
 
         Preferences win over card/rule defaults, but only for the params the body
