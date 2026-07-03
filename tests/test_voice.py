@@ -49,15 +49,26 @@ def test_mock_speaker_records() -> None:
 def brain(tmp_path) -> Brain:
     mem = TempoMem.open(tmp_path / "s.smem", embedding_dim=DIM)
     rng = np.random.default_rng(0).standard_normal(DIM).astype("float32")
-    mem.add_detections([Detection("bottle", rng / np.linalg.norm(rng), (1, 0, 0.9),
-                                  (0.9, -0.1, 0.8), (1.1, 0.1, 1.0))])
+    mem.add_detections(
+        [
+            Detection(
+                "bottle", rng / np.linalg.norm(rng), (1, 0, 0.9), (0.9, -0.1, 0.8), (1.1, 0.1, 1.0)
+            )
+        ]
+    )
     mem.commit()
     return Brain(
         mem,
         ScriptedReasoner({"what is here?": "a bottle [#1]"}),
         router=ScriptedIntentRouter({"what is here?": "question"}, default="task"),
-        planner=ScriptedPlanner({"bring the bottle": (Command("grasp", ("bottle",)),
-                                                      Command("speak", ("here you go",)))}),
+        planner=ScriptedPlanner(
+            {
+                "bring the bottle": (
+                    Command("grasp", ("bottle",)),
+                    Command("speak", ("here you go",)),
+                )
+            }
+        ),
         executor=MockBody(),
         policy=Phylax(Policy(adult_only_verbs=frozenset({"grasp"}))),
     )

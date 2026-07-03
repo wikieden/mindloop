@@ -89,6 +89,15 @@ def test_brain_uses_provider_and_bumps_on_ingest(mem: TempoMem) -> None:
     ans = brain.handle("what is here?")
     assert ans.answer is not None and ans.answer.cited_node_ids == [1]
     # a perception write bumps the map version
-    brain.ingest([Detection("cup", np.ones(DIM, "float32") / np.sqrt(DIM),
-                            (0, 0, 0.5), (-0.1, -0.1, 0.4), (0.1, 0.1, 0.6))])
+    brain.ingest(
+        [
+            Detection(
+                "cup",
+                np.ones(DIM, "float32") / np.sqrt(DIM),
+                (0, 0, 0.5),
+                (-0.1, -0.1, 0.4),
+                (0.1, 0.1, 0.6),
+            )
+        ]
+    )
     assert provider.version == 1

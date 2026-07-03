@@ -41,7 +41,9 @@ class _FlakyBody(MockBody):
         if v in self._fail_once and self._seen.get(v, 0) == 0:
             self._seen[v] = 1
             return StatusUpdate(
-                "", subtask.id, TaskStatus.FAILED,
+                "",
+                subtask.id,
+                TaskStatus.FAILED,
                 error_code=self._fail_once[v],
                 recovery_actions=(RecoveryHint(RecoveryKind.POSITION_OFFSET, 0.02),),
                 touched_node_ids=subtask.target_node_ids,

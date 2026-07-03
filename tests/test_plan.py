@@ -194,16 +194,27 @@ def test_compile_new_family_verb_gets_metadata(mem: TempoMem) -> None:
 
 
 def test_compile_two_arg_verb_fills_location_template(mem: TempoMem) -> None:
-    plan = compile_commands(
-        (Command("pour", ("water", "bottle")),), mem, MockBody().capabilities()
-    )
+    plan = compile_commands((Command("pour", ("water", "bottle")),), mem, MockBody().capabilities())
     st = plan.subtasks[0]
     assert "bottle.contains=water" in st.effects
 
 
 def test_all_family_verbs_pass_the_manifest_gate(mem: TempoMem) -> None:
-    verbs = ("present", "wipe", "pour", "dispose", "sweep", "vacuum", "mop",
-             "warn_wet_floor", "restock", "greet", "take_order", "offer", "deliver")
+    verbs = (
+        "present",
+        "wipe",
+        "pour",
+        "dispose",
+        "sweep",
+        "vacuum",
+        "mop",
+        "warn_wet_floor",
+        "restock",
+        "greet",
+        "take_order",
+        "offer",
+        "deliver",
+    )
     plan = compile_commands(
         tuple(Command(v, ("bottle",)) for v in verbs), mem, MockBody().capabilities()
     )

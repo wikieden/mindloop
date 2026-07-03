@@ -330,6 +330,9 @@ def compile_commands(
     it is used so a dispatched task always has a user-facing acknowledgement.
     """
     supported = manifest.verb_names()
+    # the manifest's declared param names are the single source for named_params
+    # (D-C minimal): zip each verb's spec params with the positional args
+    spec_params = {v.name: v.params for v in manifest.verbs}
     batch = uuid.uuid4().hex[:8]
     subtasks: list[SubTask] = []
     speak_parts: list[str] = []
@@ -356,12 +359,14 @@ def compile_commands(
         location_str = cmd.args[1] if len(cmd.args) > 1 else ""
         # table defaults first, then upstream command params (skill-card rules) win
         params = {**meta.get("params", {}), **cmd.params}
+        named = {k: a for k, a in zip(spec_params.get(verb, ()), cmd.args, strict=False) if a}
         subtasks.append(
             SubTask(
                 id=f"{batch}-{i:02d}",
                 verb=verb,
                 target_node_ids=target_ids,
                 params=params,
+                named_params=named,
                 skill=str(meta.get("skill", "")),
                 preconditions=tuple(
                     p.format(target=target_str, location=location_str) for p in meta.get("pre", ())

@@ -95,9 +95,7 @@ def test_answer_through_facade(tmp_path) -> None:
     cap: dict = {}
     vb = CosmosReasonVerbalizer(transport=_fake_transport(cap))
     enc = HashEncoder(DIM)
-    with TempoMem.open(
-        tmp_path / "c.smem", embedding_dim=DIM, encoder=enc, verbalizer=vb
-    ) as mem:
+    with TempoMem.open(tmp_path / "c.smem", embedding_dim=DIM, encoder=enc, verbalizer=vb) as mem:
         mem.add_detections([make_det("mug", (1.0, 0.0, 0.9), 1)])
         mem.commit()
         ans = mem.answer("where is the mug?")

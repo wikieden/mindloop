@@ -43,6 +43,7 @@ from .execute import (
     VerbSpec,
 )
 from .health import HealthReport
+from .menu import MenuKB, load_menu
 from .phylax import (
     Phylax,
     Policy,
@@ -102,6 +103,7 @@ __all__ = [
     "HealthReport",
     "IntentRouter",
     "Listener",
+    "MenuKB",
     "MockListener",
     "MockSpeaker",
     "Phylax",
@@ -148,6 +150,7 @@ __all__ = [
     "extract_slots",
     "instantiate",
     "load_cards",
+    "load_menu",
     "parse_commands",
     "parse_effect",
     "refusal_speak",

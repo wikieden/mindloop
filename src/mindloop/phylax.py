@@ -35,7 +35,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from .episteme import SkillCard
+    from .menu import MenuKB
     from .plan import Plan
 
 _log = logging.getLogger("mindloop.phylax")
@@ -46,6 +49,15 @@ Role = Literal["adult", "child", "guest", "stranger"]
 
 # Verbs that move the base — the ones a human-proximity speed cap applies to.
 _LOCOMOTION: frozenset[str] = frozenset({"navigate", "climb_stair"})
+
+# Verbs whose target/first arg is a *region* — the ones region-access gates read
+# (Q6 / D-A). `location`-named params are region-positions on any verb.
+_REGION_TARGET_VERBS: frozenset[str] = frozenset(
+    {"navigate", "present", "sweep", "vacuum", "mop", "warn_wet_floor"}
+)
+
+# Verbs that hand an item to a person — the allergen invariant applies (D-K/D-L).
+_SERVE_VERBS: frozenset[str] = frozenset({"offer", "deliver"})
 
 
 class Severity(str, Enum):
@@ -79,6 +91,15 @@ class SafetyContext:
     role: Role = "stranger"
     humans_within_1m: bool = False
     supervised: bool = False
+    # D-A dual identity: the robot's *active service role* for this task
+    # ("cleaner"/"host"/"guide"/None). Orthogonal to `role` (the requester);
+    # None skips the service-region gate (backward compat).
+    robot_service: str | None = None
+    # D-K/D-L allergen state of the person being served. `allergy_status_known`
+    # is False until the per-role SkillCard procedure (or install-time data)
+    # establishes it — fail-closed: serve-class verbs are blocked while unknown.
+    allergies: frozenset[str] = field(default_factory=frozenset)
+    allergy_status_known: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +119,22 @@ class Policy:
     # A skill card carrying `safety:` annotations is honored only if its
     # `provenance` is in this set (signed / reviewed). Default trusts builtins.
     trusted_provenances: frozenset[str] = field(default_factory=lambda: frozenset({"builtin"}))
+    # D1 — param-scoped permission: verb -> param name -> values that need
+    # role=adult (e.g. operate_appliance/appliance_type/{stove}); other values
+    # of the same verb stay open. Read from `params` then `named_params`.
+    adult_only_verb_params: Mapping[str, Mapping[str, frozenset[str]]] = field(default_factory=dict)
+    # D-A — region label -> the robot_service values allowed to act there
+    # (empty set = no service may). Only consulted when the context carries an
+    # active `robot_service`.
+    service_permitted_regions: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    # Q6 — requester-side region access for guest/stranger: default-allow over
+    # *registered* regions with an explicit denylist; a region absent from
+    # `known_regions` is refused (unknown ≠ allowed). Empty `known_regions`
+    # disables the whole check (feature off / backward compat).
+    known_regions: frozenset[str] = field(default_factory=frozenset)
+    guest_blocked_regions: frozenset[str] = field(default_factory=frozenset)
+    # D-K — the vetted recipe KB; None disables the allergen invariant.
+    menu: MenuKB | None = None
 
 
 class Phylax:
@@ -154,6 +191,110 @@ class Phylax:
                         speak="That area is off-limits, so I'll stop.",
                     )
                 )
+            # D1 — param-scoped adult gate: only the restricted values of a
+            # (verb, param) need role=adult; sibling values stay open.
+            for pname, restricted in p.adult_only_verb_params.get(verb, {}).items():
+                value = st.params.get(pname, st.named_params.get(pname))
+                if value in restricted and ctx.role != "adult":
+                    out.append(
+                        Violation(
+                            rule="permission.adult_only_param",
+                            severity=Severity.HIGH,
+                            message=(
+                                f"{verb!r} with {pname}={value!r} requires role=adult, "
+                                f"got {ctx.role!r}"
+                            ),
+                            subtask_id=st.id,
+                            speak="I can't do that — it needs an adult to ask.",
+                        )
+                    )
+            # region-positions this subtask acts on (Q6 / D-A): an explicit
+            # `location` param, plus the target of region-targeting verbs
+            regions = [r for r in (st.named_params.get("location"),) if r]
+            if verb in _REGION_TARGET_VERBS and st.named_params.get("target"):
+                regions.append(st.named_params["target"])
+            for region in regions:
+                # D-A — active service role vs region grant (grant ∩ need, D-O)
+                if (
+                    ctx.robot_service is not None
+                    and region in p.service_permitted_regions
+                    and ctx.robot_service not in p.service_permitted_regions[region]
+                ):
+                    out.append(
+                        Violation(
+                            rule="service.region_access",
+                            severity=Severity.HIGH,
+                            message=(
+                                f"service {ctx.robot_service!r} may not act in region {region!r}"
+                            ),
+                            subtask_id=st.id,
+                            speak="That area isn't part of my current duties.",
+                        )
+                    )
+                # Q6 — guest/stranger: default-allow over registered regions,
+                # explicit denylist, unknown region refused (never a free pass)
+                if p.known_regions and ctx.role in ("guest", "stranger"):
+                    if region in p.guest_blocked_regions:
+                        out.append(
+                            Violation(
+                                rule="region.guest_blocked",
+                                severity=Severity.HIGH,
+                                message=f"region {region!r} is private (guest denylist)",
+                                subtask_id=st.id,
+                                speak="That area is private — I can't take you there.",
+                            )
+                        )
+                    elif region not in p.known_regions:
+                        out.append(
+                            Violation(
+                                rule="region.unknown",
+                                severity=Severity.HIGH,
+                                message=f"region {region!r} was never registered at install",
+                                subtask_id=st.id,
+                                speak="I don't know that area, so I won't go there.",
+                            )
+                        )
+            # D-K / D-L — allergen invariant on serve-class verbs (fail-closed):
+            # unknown allergy status or an unvetted/unknown recipe never serves.
+            if p.menu is not None and verb in _SERVE_VERBS:
+                item = st.named_params.get("item", "")
+                if not ctx.allergy_status_known:
+                    out.append(
+                        Violation(
+                            rule="allergy.status_unknown",
+                            severity=Severity.HIGH,
+                            message=f"serving {item!r} before allergy status was established",
+                            subtask_id=st.id,
+                            speak="Before I serve anything — any allergies I should know about?",
+                        )
+                    )
+                else:
+                    allergens = p.menu.allergens(item, trusted=p.trusted_provenances)
+                    if allergens is None and ctx.allergies:
+                        out.append(
+                            Violation(
+                                rule="allergy.unknown_recipe",
+                                severity=Severity.HIGH,
+                                message=(
+                                    f"recipe for {item!r} is unknown/unvetted and the "
+                                    f"guest has allergies {sorted(ctx.allergies)}"
+                                ),
+                                subtask_id=st.id,
+                                speak="I'm not sure what's in that, so I won't risk it.",
+                            )
+                        )
+                    elif allergens and allergens & ctx.allergies:
+                        hit = sorted(allergens & ctx.allergies)
+                        out.append(
+                            Violation(
+                                rule="allergy.blocked",
+                                severity=Severity.CRITICAL,
+                                message=f"{item!r} contains {hit} — guest is allergic",
+                                subtask_id=st.id,
+                                speak="That contains something you're allergic to — "
+                                "let me offer an alternative.",
+                            )
+                        )
             if ctx.humans_within_1m and verb in _LOCOMOTION:
                 speed = _as_float(st.params.get(p.speed_param))
                 if speed is not None and speed > p.max_speed_mps_near_human:

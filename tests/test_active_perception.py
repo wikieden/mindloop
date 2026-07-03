@@ -99,8 +99,13 @@ def test_tail_replan_is_bounded(mem: TempoMem) -> None:
     planner = _CountPlanner((Command("navigate", ("apple",)), Command("grasp", ("apple",))))
     ap = ScriptedPerception({0: [_det("a", 3, (0, 0, 0.4))], 1: [_det("b", 4, (0, 0, 0.6))]})
     brain = Brain(
-        mem, ScriptedReasoner(), router=ScriptedIntentRouter(default="task"),
-        planner=planner, executor=MockBody(), active_perception=ap, max_tail_replans=1,
+        mem,
+        ScriptedReasoner(),
+        router=ScriptedIntentRouter(default="task"),
+        planner=planner,
+        executor=MockBody(),
+        active_perception=ap,
+        max_tail_replans=1,
     )
     brain.handle("fetch the apple")
     assert planner.calls == 2  # initial + exactly one re-plan (bounded), not more

@@ -59,7 +59,9 @@ class _FlakyBody(MockBody):
         if v in self._fail_once and self._seen.get(v, 0) == 0:
             self._seen[v] = 1
             return StatusUpdate(
-                "", subtask.id, TaskStatus.FAILED,
+                "",
+                subtask.id,
+                TaskStatus.FAILED,
                 error_code=self._fail_once[v],
                 recovery_actions=(RecoveryHint(RecoveryKind.POSITION_OFFSET, 0.02),),
                 touched_node_ids=subtask.target_node_ids,
@@ -90,8 +92,12 @@ def mem(tmp_path) -> TempoMem:
 # --------------------------------------------------------------------------- #
 def test_history_text_renders_turns(mem: TempoMem) -> None:
     conv = Conversation()
-    brain = Brain(mem, ScriptedReasoner({"hi": "hello [#1]"}),
-                  router=ScriptedIntentRouter(default="question"), planner=ScriptedPlanner())
+    brain = Brain(
+        mem,
+        ScriptedReasoner({"hi": "hello [#1]"}),
+        router=ScriptedIntentRouter(default="question"),
+        planner=ScriptedPlanner(),
+    )
     brain.converse("hi", conv)
     assert len(conv) == 1
     assert "User: hi" in conv.history_text()
@@ -100,8 +106,9 @@ def test_history_text_renders_turns(mem: TempoMem) -> None:
 
 def test_converse_threads_dialogue_history(mem: TempoMem) -> None:
     rsn = _CtxReasoner()
-    brain = Brain(mem, rsn, router=ScriptedIntentRouter(default="question"),
-                  planner=ScriptedPlanner())
+    brain = Brain(
+        mem, rsn, router=ScriptedIntentRouter(default="question"), planner=ScriptedPlanner()
+    )
     conv = Conversation()
     brain.converse("what is on the table?", conv)
     assert "CONVERSATION" not in rsn.last_context  # first turn: no history
@@ -121,8 +128,7 @@ def _laundry_planner(manifest) -> SkillCardPlanner:
             "id": "laundry_basic",
             "category": "laundry",
             "steps": [
-                {"verb": "operate_appliance", "target": "washer",
-                 "params": {"program": "normal"}},
+                {"verb": "operate_appliance", "target": "washer", "params": {"program": "normal"}},
             ],
         }
     )
@@ -132,8 +138,14 @@ def _laundry_planner(manifest) -> SkillCardPlanner:
 def test_preference_overrides_card_default(mem: TempoMem) -> None:
     body = MockBody()
     prefs = DictPreferenceStore({"alice": {"program": "eco", "bogus": "x"}})
-    brain = Brain(mem, ScriptedReasoner(), router=ScriptedIntentRouter(default="task"),
-                  planner=_laundry_planner(body.capabilities()), executor=body, preferences=prefs)
+    brain = Brain(
+        mem,
+        ScriptedReasoner(),
+        router=ScriptedIntentRouter(default="task"),
+        planner=_laundry_planner(body.capabilities()),
+        executor=body,
+        preferences=prefs,
+    )
     # alice prefers eco -> overrides the card's program=normal (manifest-gated:
     # 'program' is a declared operate_appliance param; 'bogus' is dropped)
     r = brain.handle("do the laundry", person="alice")

@@ -111,6 +111,11 @@ class SubTask:
     preconditions: tuple[str, ...] = ()
     effects: tuple[str, ...] = ()
     timeout_s: float = 30.0
+    # D-C (minimal): positional args keyed by the manifest verb's declared param
+    # names ({"liquid": "water", "container": "cup"}) so a policy gate can inspect
+    # the *right* argument (region-access, allergen target) without positional
+    # guessing. Filled by the compiler from `VerbSpec.params`.
+    named_params: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
