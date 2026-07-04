@@ -317,6 +317,44 @@ _VERB_TABLE: dict[str, dict[str, Any]] = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# D-D pass 0 — macro expansion
+# --------------------------------------------------------------------------- #
+# Planner-facing macros expand to atomic steps BEFORE binding and the manifest
+# gate, so Phylax and the `supported` check see the real work, never the macro.
+# Values: (child verb, indices into the macro's args). Single-pass: a child is
+# never re-expanded, which lets `mop`'s atomic core keep the same verb name.
+_MACROS: dict[str, tuple[tuple[str, tuple[int, ...]], ...]] = {
+    "deliver": (("navigate", (1,)), ("offer", (0, 1))),
+    "sweep": (("navigate", (0,)), ("vacuum", (0,))),
+    "mop": (
+        ("warn_wet_floor", (0,)),
+        ("navigate", (0,)),
+        ("mop", (0,)),
+        ("warn_wet_floor", (0,)),
+    ),
+}
+
+
+def expand_macros(commands: tuple[Command, ...]) -> tuple[tuple[Command, str | None], ...]:
+    """Compile pass 0 (D-D): expand macros into ``(command, macro_parent)`` pairs.
+
+    Atomic commands pass through with ``macro_parent=None``. A macro's params
+    (e.g. a skill-card rule) propagate to every child so nothing set upstream
+    is lost in expansion.
+    """
+    out: list[tuple[Command, str | None]] = []
+    for cmd in commands:
+        spec = _MACROS.get(cmd.verb.lower())
+        if spec is None:
+            out.append((cmd, None))
+            continue
+        for child_verb, idxs in spec:
+            args = tuple(cmd.args[i] for i in idxs if i < len(cmd.args))
+            out.append((Command(child_verb, args, dict(cmd.params)), cmd.verb.lower()))
+    return tuple(out)
+
+
 def _resolve_node_id(mem: TempoMem, mention: str) -> int | None:
     """Bind an object mention to its best scene-graph node id (B9), or None."""
     nid, _ = _bind_mention(mem, mention)
@@ -391,7 +429,7 @@ def compile_commands(
     speak_parts: list[str] = []
     ambiguities: list[BindingAmbiguity] = []
 
-    for i, cmd in enumerate(commands):
+    for i, (cmd, macro_parent) in enumerate(expand_macros(commands)):
         verb = cmd.verb.lower()
         if verb == "speak":
             if cmd.args and cmd.args[0]:
@@ -441,6 +479,7 @@ def compile_commands(
                     e.format(target=target_str, location=location_str) for e in meta.get("eff", ())
                 ),
                 timeout_s=float(meta.get("timeout", 30.0)),
+                macro_parent=macro_parent,
             )
         )
 

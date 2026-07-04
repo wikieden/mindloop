@@ -200,20 +200,19 @@ def test_compile_two_arg_verb_fills_location_template(mem: TempoMem) -> None:
 
 
 def test_all_family_verbs_pass_the_manifest_gate(mem: TempoMem) -> None:
+    # atomic family verbs compile 1:1; the macros (sweep/mop/deliver) expand in
+    # pass 0 (D-D) and are covered by test_macro_compile.py
     verbs = (
         "present",
         "wipe",
         "pour",
         "dispose",
-        "sweep",
         "vacuum",
-        "mop",
         "warn_wet_floor",
         "restock",
         "greet",
         "take_order",
         "offer",
-        "deliver",
     )
     plan = compile_commands(
         tuple(Command(v, ("bottle",)) for v in verbs), mem, MockBody().capabilities()

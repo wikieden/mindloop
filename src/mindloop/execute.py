@@ -116,6 +116,9 @@ class SubTask:
     # the *right* argument (region-access, allergen target) without positional
     # guessing. Filled by the compiler from `VerbSpec.params`.
     named_params: dict[str, str] = field(default_factory=dict)
+    # D-D: set on steps produced by macro expansion (compile pass 0) — the
+    # planner-facing macro verb this atomic step came from, for trace nesting.
+    macro_parent: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS episodes (
     status      TEXT NOT NULL,
     error_code  TEXT,
     detail      TEXT NOT NULL DEFAULT '',
-    ts          REAL NOT NULL
+    ts          REAL NOT NULL,
+    macro_parent TEXT                    -- D-D: macro verb this step expanded from
 );
 CREATE INDEX IF NOT EXISTS idx_episodes_session ON episodes(session_id);
 """
@@ -60,6 +61,7 @@ class TraceRecord:
     error_code: str | None
     detail: str
     ts: float
+    macro_parent: str | None = None
 
 
 class TraceStore:
@@ -68,6 +70,11 @@ class TraceStore:
     def __init__(self, path: str = ":memory:") -> None:
         self._conn = sqlite3.connect(path)
         self._conn.executescript(_SCHEMA)
+        # D-D migration: pre-existing trace files lack the macro_parent column;
+        # append it in place (append-only store — rows are never rewritten).
+        cols = {r[1] for r in self._conn.execute("PRAGMA table_info(episodes)")}
+        if "macro_parent" not in cols:
+            self._conn.execute("ALTER TABLE episodes ADD COLUMN macro_parent TEXT")
         self._conn.commit()
 
     def log_attempt(
@@ -94,8 +101,8 @@ class TraceStore:
         err = status.error_code.value if status.error_code is not None else None
         self._conn.execute(
             "INSERT INTO episodes "
-            "(session_id, kind, verb, subtask_id, node_ids, status, error_code, detail, ts) "
-            "VALUES (?,?,?,?,?,?,?,?,?)",
+            "(session_id, kind, verb, subtask_id, node_ids, status, error_code, detail, ts, "
+            "macro_parent) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (
                 session_id,
                 kind,
@@ -106,6 +113,7 @@ class TraceStore:
                 err,
                 detail,
                 time.time(),
+                subtask.macro_parent,
             ),
         )
         self._conn.commit()
@@ -146,6 +154,7 @@ class TraceStore:
             error_code=r[7],
             detail=r[8],
             ts=r[9],
+            macro_parent=r[10],
         )
 
     def close(self) -> None:
