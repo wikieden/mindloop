@@ -17,6 +17,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from .brain import Brain
     from .dialogue import Conversation
     from .phylax import SafetyContext
@@ -63,6 +65,29 @@ class MockSpeaker:
 
     def say(self, text: str) -> None:
         self.said.append(text)
+
+
+class ListenerInterruptSource:
+    """Voice-fed `InterruptSource` (P7.3 seam): pending audio → transcript → inbox.
+
+    Bridges the ears to the barge-in inbox: ``audio_source`` is the non-blocking
+    mic/VAD seam (return the next captured utterance chunk, or None when nothing
+    new); `poll` transcribes at most one chunk per call through the `Listener`.
+    A blank transcript is swallowed — a misheard nothing never becomes a barge.
+    On-body streaming ASR+VAD fills ``audio_source`` (deferred, hardware);
+    tests script it.
+    """
+
+    def __init__(self, listener: Listener, *, audio_source: Callable[[], bytes | None]) -> None:
+        self._listener = listener
+        self._audio = audio_source
+
+    def poll(self) -> str | None:
+        chunk = self._audio()
+        if not chunk:
+            return None
+        text = self._listener.transcribe(chunk).strip()
+        return text or None
 
 
 def reply_text(result: HandleResult) -> str:

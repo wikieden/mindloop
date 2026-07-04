@@ -81,7 +81,15 @@ from .role import RoleBundle, effective_verbs, load_role
 from .scene_context import DefaultSceneContextProvider, Focus, SceneContextProvider
 from .trace import TraceRecord, TraceStore
 from .verbalizers import CosmosReasonVerbalizer, FailoverVerbalizer, strip_reasoning
-from .voice import Listener, MockListener, MockSpeaker, Speaker, VoiceLoop, reply_text
+from .voice import (
+    Listener,
+    ListenerInterruptSource,
+    MockListener,
+    MockSpeaker,
+    Speaker,
+    VoiceLoop,
+    reply_text,
+)
 from .world_state import Effect, EffectApplier, WorldState, parse_effect
 
 __version__ = "0.1.0a0"
@@ -117,6 +125,7 @@ __all__ = [
     "IntentRouter",
     "InterruptSource",
     "Listener",
+    "ListenerInterruptSource",
     "MenuKB",
     "MockListener",
     "MockSpeaker",
