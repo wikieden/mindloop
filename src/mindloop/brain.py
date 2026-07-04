@@ -253,7 +253,25 @@ class Brain:
         if self._executor is None:
             raise BrainError("Brain.handle with a task intent needs executor= (a body)")
         manifest = self._executor.capabilities()
+        self._session_n += 1
+        session = f"s{self._session_n}"
         plan = self._plan_task(instruction, manifest, person, k=k)
+
+        # D-I: a non-fungible binding ambiguity asks a human ONCE before acting
+        # (shared per-task ask budget; the folded answer re-plans and then flows
+        # through the Phylax gate below like any instruction). Without a
+        # clarifier the plan proceeds on the compiler's top-1 binding.
+        asks_used = 0
+        if plan.ambiguities and self._clarifier is not None and self._ask_budget > 0:
+            amb = plan.ambiguities[0]
+            options = " or ".join(f"{label} (#{nid})" for nid, label in amb.candidates)
+            question = f"Which one do you mean by '{amb.mention}': {options}?"
+            answer = self._clarifier.clarify(question)
+            asks_used = 1
+            self._trace_ask(question, answer, session)
+            if answer:
+                instruction = f"{instruction} ({answer})"
+                plan = self._plan_task(instruction, manifest, person, k=k)
 
         if self._policy is not None:
             violations = self._policy.check(plan, safety_context)
@@ -270,6 +288,8 @@ class Brain:
             person=person,
             k=k,
             safety_context=safety_context,
+            session=session,
+            asks_used=asks_used,
         )
         if escalation is not None:
             plan = replace(plan, speak=escalation)
@@ -328,6 +348,8 @@ class Brain:
         person: str,
         k: int,
         safety_context: SafetyContext | None,
+        session: str,
+        asks_used: int = 0,
     ) -> tuple[tuple[StatusUpdate, ...], str | None]:
         """Dispatch the plan, with failure repair (P4) + active-perception re-plan (P4-dyn).
 
@@ -339,13 +361,12 @@ class Brain:
         """
         if self._replanner is not None:
             self._replanner.reset()  # new task: counters reset, trace untouched
-        self._session_n += 1
-        session = f"s{self._session_n}"
 
         subs = list(plan.subtasks)
         statuses: list[StatusUpdate] = []
         replans = 0
-        ask_left = self._ask_budget  # D3: budget resets per task
+        # D3: budget resets per task; a D-I binding ask upstream already spent from it
+        ask_left = max(0, self._ask_budget - asks_used)
         i = 0
         while i < len(subs):
             # (0) barge-in (3b): poll the interrupt inbox between steps (D-E

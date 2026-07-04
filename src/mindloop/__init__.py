@@ -61,6 +61,7 @@ from .phylax import (
     refusal_speak,
 )
 from .plan import (
+    BindingAmbiguity,
     Command,
     HandleResult,
     IntentRouter,
@@ -90,6 +91,7 @@ __all__ = [
     "Answer",
     "BargeClassifier",
     "BargeDecision",
+    "BindingAmbiguity",
     "BodyProfile",
     "Brain",
     "BrainError",

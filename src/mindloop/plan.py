@@ -55,12 +55,27 @@ class Command:
 
 
 @dataclass(frozen=True, slots=True)
+class BindingAmbiguity:
+    """A non-fungible multi-candidate object binding (D-I): ask, don't guess.
+
+    ``candidates`` are the close-scoring scene nodes as ``(node_id, label)``.
+    The plan is still bound to the top-1 candidate so a clarifier-less brain
+    can proceed; a wired Clarifier asks once before dispatch.
+    """
+
+    mention: str
+    candidates: tuple[tuple[int, str], ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class Plan:
     """A compiled plan: dispatchable subtasks + a final user-facing utterance."""
 
     subtasks: tuple[SubTask, ...] = ()
     speak: str = ""
     rationale: str = ""
+    # D-I: non-fungible binding ambiguities found at compile time (top-1 bound)
+    ambiguities: tuple[BindingAmbiguity, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -304,11 +319,49 @@ _VERB_TABLE: dict[str, dict[str, Any]] = {
 
 def _resolve_node_id(mem: TempoMem, mention: str) -> int | None:
     """Bind an object mention to its best scene-graph node id (B9), or None."""
+    nid, _ = _bind_mention(mem, mention)
+    return nid
+
+
+# A candidate counts as "close in score" to the top hit above this ratio (D-I).
+# Build-time constant: query scores are only compared within one result list, so
+# a relative ratio is scale-free across keyword/semantic backends.
+_CLOSE_RATIO = 0.75
+
+
+def _has_qualifier(mention: str, label: str) -> bool:
+    """True when the mention carries tokens beyond the candidate label ("red cup")."""
+    mention_tokens = {t for t in mention.lower().split() if t}
+    label_tokens = {t for t in label.lower().split() if t}
+    return bool(mention_tokens - label_tokens)
+
+
+def _bind_mention(mem: TempoMem, mention: str) -> tuple[int | None, BindingAmbiguity | None]:
+    """Bind a mention to its top node id + detect non-fungible ambiguity (D-I).
+
+    Queries k=3 and flags ambiguity ONLY when the close candidates are
+    semantically non-interchangeable: (1) different labels near-equal in score,
+    or (2) a qualified mention that multiple same-label candidates still tie on
+    (the qualifier failed to separate them). Generic mention over identical
+    items is fungible — bind top-1 silently.
+    """
     if not mention:
-        return None
-    result = mem.query(mention, k=1)
+        return None, None
+    result = mem.query(mention, k=3)
     nodes = getattr(result, "nodes", None) or []
-    return nodes[0].id if nodes else None
+    if not nodes:
+        return None, None
+    top = nodes[0]
+    close = (
+        [n for n in nodes if n.score >= top.score * _CLOSE_RATIO] if top.score > 0 else [top]
+    )
+    if len(close) > 1:
+        labels = {n.label for n in close}
+        if len(labels) > 1 or _has_qualifier(mention, top.label):
+            return top.id, BindingAmbiguity(
+                mention=mention, candidates=tuple((n.id, n.label) for n in close)
+            )
+    return top.id, None
 
 
 def compile_commands(
@@ -336,6 +389,7 @@ def compile_commands(
     batch = uuid.uuid4().hex[:8]
     subtasks: list[SubTask] = []
     speak_parts: list[str] = []
+    ambiguities: list[BindingAmbiguity] = []
 
     for i, cmd in enumerate(commands):
         verb = cmd.verb.lower()
@@ -352,7 +406,19 @@ def compile_commands(
             )
             continue
         meta = _VERB_TABLE.get(verb, {})
-        target_ids = tuple(nid for a in cmd.args if (nid := _resolve_node_id(mem, a)) is not None)
+        bound: list[int] = []
+        for a in cmd.args:
+            nid, amb = _bind_mention(mem, a)
+            if nid is not None:
+                bound.append(nid)
+            if amb is not None:
+                ambiguities.append(amb)
+                _log.info(
+                    "binding ambiguity for %r: candidates %s (bound top-1)",
+                    a,
+                    amb.candidates,
+                )
+        target_ids = tuple(bound)
         target_str = cmd.args[0] if cmd.args else ""
         # `{location}` in pre/eff templates is the second arg (place's region
         # anchor, pour's container, restock's destination) — empty when absent
@@ -381,4 +447,4 @@ def compile_commands(
     speak = " ".join(speak_parts)
     if subtasks and not speak:
         speak = default_speak
-    return Plan(subtasks=tuple(subtasks), speak=speak)
+    return Plan(subtasks=tuple(subtasks), speak=speak, ambiguities=tuple(ambiguities))
