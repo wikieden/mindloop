@@ -26,6 +26,7 @@ third-party dep appears. Retrieval is BYO-encoder (like `tempomem.query`): pass 
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -275,9 +276,15 @@ class SkillLibrary:
         words = set(instruction.lower().replace(",", " ").split())
         scored: list[tuple[float, SkillCard]] = []
         for card in self._cards.values():
-            terms = {card.id, card.category, *(s.verb for s in card.steps)}
-            terms |= {v for r in card.rules for v in r.when.values()}
-            overlap = len(words & {t.lower() for t in terms if t})
+            # verbs + rule values stay whole terms (an "open_door" step must not
+            # leak an "open" token); only the *naming* fields are tokenized so a
+            # hyphen/slash-joined id or category ("learned/put-mug-on-shelf")
+            # still matches instruction words.
+            tokens = {s.verb.lower() for s in card.steps if s.verb}
+            tokens |= {v.lower() for r in card.rules for v in r.when.values() if v}
+            for name in (card.id, card.category):
+                tokens |= {tok for tok in re.split(r"[^a-z0-9]+", name.lower()) if tok}
+            overlap = len(words & tokens)
             scored.append((float(overlap), card))
         scored.sort(key=lambda sc: sc[0], reverse=True)
         return scored
