@@ -132,3 +132,26 @@ def test_body_without_handshake_defers_to_boundary() -> None:
     verbs = [rec.verb for rec in reversed(tr.episodes(limit=100))]
     assert "charging" in verbs and "grasp" not in verbs
     tr.close()
+
+
+def test_brain_trace_can_share_the_smem_store(tmp_path) -> None:
+    # D2 (T5-9): one .smem file holds the scene graph AND the episodic trace
+    from mindloop import TraceStore
+
+    mem = TempoMem.open(tmp_path / "t.smem", embedding_dim=4)
+    v = np.ones(4, dtype="float32") / 2.0
+    mem.add_detections([Detection("mug", v, (0.5, 0.5, 0.8), (0.4, 0.4, 0.7), (0.6, 0.6, 0.9))])
+    mem.commit()
+    tr = TraceStore(log=mem.trace_log())
+    brain = Brain(
+        mem,
+        ScriptedReasoner(),
+        router=ScriptedIntentRouter({}, default="task"),
+        planner=ScriptedPlanner(_PLANS),
+        executor=MockBody(),
+        trace=tr,
+    )
+    r = brain.handle("bring the mug")
+    assert r.statuses and all(st.status.value == "success" for st in r.statuses)
+    assert tr.episodes()  # rows landed in the shared store
+    mem.close()
