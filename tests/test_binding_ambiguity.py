@@ -154,3 +154,11 @@ def test_binding_ask_counts_against_task_budget() -> None:
     ).handle("grab the red cup")
     assert len(clarifier.asked) == 1
     assert r.plan is not None and r.plan.speak  # honest escalation speak
+
+
+def test_zero_score_ties_are_ambiguous_when_labels_differ() -> None:
+    # MEDIUM-2: keyword backends can return score 0.0 for every candidate — a
+    # zero-score tie is maximal uncertainty, not silence
+    mem = _StubMem({"cup": [(1, "cup", 0.0), (2, "mug", 0.0)]})
+    plan = _compile(mem, Command("grasp", ("cup",)))
+    assert plan.ambiguities and {n for n, _ in plan.ambiguities[0].candidates} == {1, 2}

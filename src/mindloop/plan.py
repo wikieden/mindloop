@@ -354,6 +354,15 @@ def expand_macros(commands: tuple[Command, ...]) -> tuple[tuple[Command, str | N
             continue
         for child_verb, idxs in spec:
             args = tuple(cmd.args[i] for i in idxs if i < len(cmd.args))
+            if idxs and not args:
+                # e.g. deliver(item) with no recipient: the navigate child has
+                # nowhere to go — compile best-effort, but say so loudly
+                _log.warning(
+                    "macro %r is missing arg(s) at %s — child %r compiles with no target",
+                    cmd.verb.lower(),
+                    idxs,
+                    child_verb,
+                )
             out.append((Command(child_verb, args, dict(cmd.params)), cmd.verb.lower()))
     return tuple(out)
 
@@ -393,9 +402,13 @@ def _bind_mention(mem: TempoMem, mention: str) -> tuple[int | None, BindingAmbig
     if not nodes:
         return None, None
     top = nodes[0]
-    close = (
-        [n for n in nodes if n.score >= top.score * _CLOSE_RATIO] if top.score > 0 else [top]
-    )
+    if top.score > 0:
+        close = [n for n in nodes if n.score >= top.score * _CLOSE_RATIO]
+    else:
+        # a zero/negative top score means the backend couldn't rank: every
+        # candidate tied at the top is equally (un)informative — treat the tie
+        # as close rather than silently trusting position 0
+        close = [n for n in nodes if n.score == top.score]
     if len(close) > 1:
         labels = {n.label for n in close}
         if len(labels) > 1 or _has_qualifier(mention, top.label):

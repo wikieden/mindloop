@@ -79,3 +79,14 @@ def test_trace_records_macro_parent() -> None:
     rows = tr.episodes(session_id="s1")
     assert rows and rows[0].macro_parent == "sweep"
     tr.close()
+
+
+def test_deliver_with_missing_destination_warns_and_degrades(mem, caplog) -> None:
+    # MEDIUM-1: deliver structurally needs (item, recipient); with only the item
+    # the navigate child has no destination — compile best-effort but warn loudly
+    import logging
+
+    with caplog.at_level(logging.WARNING, logger="mindloop.plan"):
+        plan = compile_commands((Command("deliver", ("tea",)),), mem, _MANIFEST)
+    assert tuple(s.verb for s in plan.subtasks) == ("navigate", "offer")
+    assert any("deliver" in r.message and "missing" in r.message for r in caplog.records)

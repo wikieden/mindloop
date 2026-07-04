@@ -81,3 +81,13 @@ def test_serving_mode_is_traced_per_task_turn() -> None:
     rows = [r for r in tr.episodes(limit=100) if r.verb == "serve_mode"]
     assert rows and "fallback" in rows[0].detail
     tr.close()
+
+
+def test_offline_answers_keep_their_text_untouched() -> None:
+    # honest UX lives on task speak only — answer text must stay citation-clean;
+    # the UX layer reads HandleResult.mode instead
+    brain = _brain(mode="fallback")
+    brain._router = ScriptedIntentRouter({}, default="question")  # route to ask
+    r = brain.handle("what do you see?")
+    assert r.mode == "fallback"
+    assert r.answer is not None and "offline" not in r.answer.text
