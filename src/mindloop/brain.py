@@ -44,6 +44,23 @@ if TYPE_CHECKING:
     from .trace import TraceStore
     from .voice import Speaker
 
+# D-P build-time constant: reliability buckets below this are disclosed in the
+# planner context; healthy skills stay a bare vocabulary word.
+_RELIABILITY_DISCLOSE = 0.8
+
+
+def _verb_vocab(manifest: CapabilityManifest) -> list[str]:
+    """The planner-facing verb vocabulary, weak skills annotated inline (D-P)."""
+    out: list[str] = []
+    for v in sorted(manifest.verbs, key=lambda v: v.name):
+        low = {b: r for b, r in v.reliability.items() if r < _RELIABILITY_DISCLOSE}
+        if low:
+            buckets = ", ".join(f"{b}:{r:.2f}" for b, r in sorted(low.items()))
+            out.append(f"{v.name} (reliability {buckets})")
+        else:
+            out.append(v.name)
+    return out
+
 
 class Brain:
     """Memory + Reasoner cognitive loop.
@@ -305,7 +322,7 @@ class Brain:
         fresh perception (P4), so the new plan is grounded in the current world.
         """
         assert self._planner is not None  # guaranteed by handle's guard
-        context = self._plan_context(instruction, manifest_verbs=sorted(manifest.verb_names()), k=k)
+        context = self._plan_context(instruction, manifest=manifest, k=k)
         plan = compile_commands(
             self._planner.plan(instruction, context),
             self._mem,
@@ -586,12 +603,17 @@ class Brain:
             message="already satisfied (idempotent skip)",
         )
 
-    def _plan_context(self, instruction: str, *, manifest_verbs: list[str], k: int) -> str:
+    def _plan_context(self, instruction: str, *, manifest: CapabilityManifest, k: int) -> str:
         """Build the planner's context: the relevant scene subgraph + the verb
-        vocabulary the body supports (so the LLM only plans dispatchable verbs)."""
+        vocabulary the body supports (so the LLM only plans dispatchable verbs).
+
+        D-P: a verb whose scorecard reliability is below the disclosure bar is
+        annotated inline ("grasp (reliability fragile:0.55)") so the LLM can
+        route around a weak skill or pre-disclose — advisory only, never safety.
+        """
         scene, _ = self._ctx.context(Focus(query=instruction), k=k, max_tokens=self._budget)
         grounded = self._assemble_context(scene)
-        return f"Available verbs: {', '.join(manifest_verbs)}\n\nSCENE:\n{grounded}"
+        return f"Available verbs: {', '.join(_verb_vocab(manifest))}\n\nSCENE:\n{grounded}"
 
     def _drain(self, subtask: Any) -> StatusUpdate:
         """Consume a dispatch `StatusUpdate` stream to its terminal element."""

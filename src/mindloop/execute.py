@@ -149,6 +149,10 @@ class VerbSpec:
     name: str
     params: tuple[str, ...] = ()
     appliance_types: tuple[str, ...] = ()
+    # D-P: optional advisory skill reliability per condition bucket
+    # ({"fragile": 0.6}) — shapes planning preferences only; safety gates
+    # never read it. Filled by the skillforge scorecard, empty by default.
+    reliability: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
