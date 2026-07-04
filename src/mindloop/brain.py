@@ -125,6 +125,10 @@ class Brain:
         self._barge = barge
         self._speaker = speaker
         self._barge_n = 0
+        # T5-8 mid-step barge: an utterance caught DURING a step is stashed here
+        # after the in-flight step is cancelled (body handshake) or, for a body
+        # without the handshake, deferred; the boundary handler consumes it.
+        self._pending_barge: str | None = None
         # Ask-human seam (3b, D3): a reachable dead-end ESCALATE asks a targeted
         # question instead of giving up; ≤ ask_budget asks per task (reset per
         # task, ratified) and the answer's re-plan is re-vetted by Phylax.
@@ -417,12 +421,14 @@ class Brain:
         # D3: budget resets per task; a D-I binding ask upstream already spent from it
         ask_left = max(0, self._ask_budget - asks_used)
         i = 0
-        while i < len(subs):
-            # (0) barge-in (3b): poll the interrupt inbox between steps (D-E
-            # precision — a step in progress finishes first; mid-step preemption
-            # needs the bodylink cancel/pause/resume handshake, deferred to P4).
-            if self._interrupts is not None:
-                utt = self._interrupts.poll()
+        while i < len(subs) or self._pending_barge is not None:
+            # (0) barge-in (3b): a stashed mid-step utterance (T5-8) takes
+            # priority, then the inbox is polled at the step boundary.
+            if self._interrupts is not None or self._pending_barge is not None:
+                utt = self._pending_barge
+                self._pending_barge = None
+                if utt is None and self._interrupts is not None:
+                    utt = self._interrupts.poll()
                 if utt is not None:
                     act, payload = self._handle_barge(
                         utt,
@@ -440,6 +446,8 @@ class Brain:
                         subs = subs[:i] + new_subs
                         continue
                     # "resume": answered inline — carry on with the current step
+            if i >= len(subs):
+                break  # a stashed barge was consumed with no steps left to run
             sub = subs[i]
 
             # (1) active perception (dynamic-scene P4) — re-look between steps
@@ -468,7 +476,7 @@ class Brain:
                 continue
 
             # (3) dispatch + typed-failure repair (P4)
-            st = self._drain(sub)
+            st = self._drain(sub, k=k, session=session)
             self._record(sub, st, session)
             if st.status.value == "failed" and self._replanner is not None:
                 st, escalation = self._repair(sub, st, safety_context, session)
@@ -606,7 +614,7 @@ class Brain:
                 if viol:
                     return st, refusal_speak(viol)
             for cs in decision.subtasks:
-                st = self._drain(cs)
+                st = self._drain(cs, session=session)
                 self._record(cs, st, session)
                 sub = cs  # the retried step keys the next replan
         return st, None  # recovered
@@ -657,11 +665,45 @@ class Brain:
         grounded = self._assemble_context(scene)
         return f"Available verbs: {', '.join(_verb_vocab(manifest))}\n\nSCENE:\n{grounded}"
 
-    def _drain(self, subtask: Any) -> StatusUpdate:
-        """Consume a dispatch `StatusUpdate` stream to its terminal element."""
+    def _drain(self, subtask: Any, *, k: int = 64, session: str = "default") -> StatusUpdate:
+        """Consume a dispatch stream to its terminal element, polling the barge
+        inbox BETWEEN stream updates (T5-8 — mid-step precision, closes D-E).
+
+        Chitchat/questions are answered inline while the step keeps running.
+        Abort/supersede/correction request the body's ``cancel`` handshake when
+        it ships one (the stream then terminates ABORTED without executing);
+        a body without the handshake falls back to the D-E between-step
+        baseline. Either way the utterance is stashed for the boundary handler
+        (step 0), which does the classify-trace-replan work exactly as before.
+        """
         last: StatusUpdate | None = None
         for update in self._executor.dispatch(subtask):  # type: ignore[union-attr]
             last = update
+            if update.status.is_terminal or self._interrupts is None:
+                continue
+            if self._pending_barge is not None:
+                continue  # one pending utterance at a time
+            utt = self._interrupts.poll()
+            if utt is None:
+                continue
+            clf = self._barge or (
+                BargeClassifier(self._router) if self._router is not None else None
+            )
+            if clf is None:
+                self._pending_barge = utt  # cannot classify mid-step: defer
+                continue
+            decision = clf.classify(utt)
+            if decision.kind == "answer_resume":
+                # answer inline; the in-flight step is never disturbed
+                self._trace_barge(decision, session)
+                ans = self.ask(utt, k=k)
+                if self._speaker is not None:
+                    self._speaker.say(ans.text)
+                continue
+            cancel = getattr(self._executor, "cancel", None)
+            if callable(cancel):
+                cancel(subtask.id)
+            self._pending_barge = utt
         if last is None:
             raise BrainError(f"executor yielded no StatusUpdate for subtask {subtask.id!r}")
         return last
