@@ -123,9 +123,19 @@ class CosmosReasonVerbalizer:
         }
         data = self._transport(payload)
         try:
-            text = data["choices"][0]["message"]["content"]
+            message = data["choices"][0]["message"]
         except (KeyError, IndexError, TypeError) as e:
             raise QueryError(f"Cosmos NIM returned an unexpected response: {data!r}") from e
+        # A server running a reasoning parser (vLLM --reasoning-parser) splits the
+        # output: `content` is None when generation ended inside the think block.
+        # Fall back to `reasoning_content` so a truncated turn degrades to
+        # best-effort text instead of crashing the loop.
+        text = (
+            message.get("content")
+            or message.get("reasoning_content")
+            or message.get("reasoning")  # vLLM 0.23 field name
+            or ""
+        )
         return strip_reasoning(text)
 
     def _http_post(self, payload: dict[str, Any]) -> dict[str, Any]:
