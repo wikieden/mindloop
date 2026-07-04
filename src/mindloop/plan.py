@@ -93,6 +93,9 @@ class HandleResult:
     # Non-empty when the Phylax safety gate (P3) blocked the plan: it was refused,
     # not dispatched (`statuses` is empty), and `plan.speak` carries the refusal.
     violations: tuple[Violation, ...] = ()
+    # P7.4 telemetry: which verbalizer tier served ("primary" / "fallback";
+    # "" when no mode probe is wired).
+    mode: str = ""
 
     @property
     def blocked(self) -> bool:

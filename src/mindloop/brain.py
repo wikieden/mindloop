@@ -11,6 +11,7 @@ connection). Active perception (LLM → re-look) is future work.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
@@ -47,6 +48,10 @@ if TYPE_CHECKING:
 # D-P build-time constant: reliability buckets below this are disclosed in the
 # planner context; healthy skills stay a bare vocabulary word.
 _RELIABILITY_DISCLOSE = 0.8
+
+# P7.4 honest-UX line appended to a task's speak while the on-body fallback
+# serves (the user must know the robot is degraded, never guess).
+_OFFLINE_NOTE = "(I'm running offline right now, so I may be a bit limited.)"
 
 
 def _verb_vocab(manifest: CapabilityManifest) -> list[str]:
@@ -95,6 +100,8 @@ class Brain:
         speaker: Speaker | None = None,
         clarifier: Clarifier | None = None,
         ask_budget: int = 2,
+        mode_probe: Callable[[], str] | None = None,
+        offline_policy: Phylax | None = None,
     ) -> None:
         self._mem = mem
         self._reasoner = reasoner
@@ -131,6 +138,14 @@ class Brain:
         # task plan is vetted before dispatch; a violation blocks the whole plan
         # (stop + speak, no reroute). None ⇒ no gate (dispatch as in P1/P2).
         self._policy = policy
+        # P7.4 degraded mode: `mode_probe` reports which verbalizer tier serves
+        # (typically ``lambda: failover.mode``); while it reports "fallback" an
+        # optional stricter `offline_policy` replaces the gate for the turn
+        # (tighten-only — a missing offline gate keeps the normal one; the swap
+        # can never loosen because Phylax policies are self-contained).
+        self._mode_probe = mode_probe
+        self._offline_policy = offline_policy
+        self._gate = policy  # the Phylax gate active for the current turn
         # Optional failure-driven repair (P4). `replanner` turns a typed FAILED
         # StatusUpdate (B3) into a bounded corrective sequence; `trace` logs every
         # attempt/failure (L4 episodic, citing node ids). None ⇒ dispatch once.
@@ -263,15 +278,26 @@ class Brain:
         if self._router is None or self._planner is None:
             raise BrainError("Brain.handle needs router= and planner= (see Brain.__init__)")
 
+        # P7.4: which verbalizer tier serves this turn ("" = no probe wired);
+        # while offline an optional conservative gate replaces the normal one
+        mode = self._mode_probe() if self._mode_probe is not None else ""
+        offline = mode == "fallback"
+        self._gate = (
+            self._offline_policy if offline and self._offline_policy is not None else self._policy
+        )
+
         intent = self._router.classify(instruction)
         if intent in ("question", "chat"):
-            return HandleResult(intent=intent, answer=self.ask(instruction, k=k, dialogue=dialogue))
+            return HandleResult(
+                intent=intent, answer=self.ask(instruction, k=k, dialogue=dialogue), mode=mode
+            )
 
         if self._executor is None:
             raise BrainError("Brain.handle with a task intent needs executor= (a body)")
         manifest = self._executor.capabilities()
         self._session_n += 1
         session = f"s{self._session_n}"
+        self._trace_mode(mode, session)
         plan = self._plan_task(instruction, manifest, person, k=k)
 
         # D-I: a non-fungible binding ambiguity asks a human ONCE before acting
@@ -290,13 +316,16 @@ class Brain:
                 instruction = f"{instruction} ({answer})"
                 plan = self._plan_task(instruction, manifest, person, k=k)
 
-        if self._policy is not None:
-            violations = self._policy.check(plan, safety_context)
+        if self._gate is not None:
+            violations = self._gate.check(plan, safety_context)
             if violations:
                 # Safety-class block (D4 §9): refuse the whole plan, speak why, and
                 # dispatch nothing. The lower must-not overrides the upper want-to.
-                blocked = replace(plan, speak=refusal_speak(violations))
-                return HandleResult(intent=intent, plan=blocked, violations=violations)
+                speak = refusal_speak(violations)
+                if offline:
+                    speak = f"{speak} {_OFFLINE_NOTE}"
+                blocked = replace(plan, speak=speak)
+                return HandleResult(intent=intent, plan=blocked, violations=violations, mode=mode)
 
         statuses, escalation = self._dispatch_plan(
             plan,
@@ -310,7 +339,10 @@ class Brain:
         )
         if escalation is not None:
             plan = replace(plan, speak=escalation)
-        return HandleResult(intent=intent, plan=plan, statuses=statuses)
+        if offline:
+            # honest UX: a task served by the on-body fallback says so
+            plan = replace(plan, speak=f"{plan.speak} {_OFFLINE_NOTE}".strip())
+        return HandleResult(intent=intent, plan=plan, statuses=statuses, mode=mode)
 
     def _plan_task(
         self, instruction: str, manifest: CapabilityManifest, person: str, *, k: int
@@ -418,8 +450,8 @@ class Brain:
                     self.ingest(dets)  # fuse → map version bump
                     replans += 1
                     new_plan = self._plan_task(instruction, manifest, person, k=k)
-                    if self._policy is not None:
-                        viol = self._policy.check(new_plan, safety_context)
+                    if self._gate is not None:
+                        viol = self._gate.check(new_plan, safety_context)
                         if viol:
                             return tuple(statuses), refusal_speak(viol)
                     # splice the fresh tail in place of the remaining steps; already-done
@@ -451,8 +483,8 @@ class Brain:
                         if answer:
                             goal = f"{instruction} ({answer})"
                             new_plan = self._plan_task(goal, manifest, person, k=k)
-                            if self._policy is not None:
-                                viol = self._policy.check(new_plan, safety_context)
+                            if self._gate is not None:
+                                viol = self._gate.check(new_plan, safety_context)
                                 if viol:
                                     # the answer is an instruction: a blocked one
                                     # refuses, it never sneaks past the gate
@@ -505,8 +537,8 @@ class Brain:
         # supersede: the utterance IS the new goal; correction: same goal + fix
         goal = utterance if decision.kind == "supersede" else f"{instruction} ({utterance})"
         new_plan = self._plan_task(goal, manifest, person, k=k)
-        if self._policy is not None:
-            viol = self._policy.check(new_plan, safety_context)
+        if self._gate is not None:
+            viol = self._gate.check(new_plan, safety_context)
             if viol:
                 return ("abort", refusal_speak(viol))
         return ("replace", (list(new_plan.subtasks), goal))
@@ -526,6 +558,16 @@ class Brain:
             TaskStatus.SUCCESS,
             progress=1.0,
             message=f"barge_in:{decision.kind} {decision.utterance!r}",
+        )
+        self._trace.log_attempt(sub, st, session_id=session)
+
+    def _trace_mode(self, mode: str, session: str) -> None:
+        """P7.4 telemetry: record which verbalizer tier served this task turn."""
+        if self._trace is None or not mode:
+            return
+        sub = _SubTask(id=f"mode-{session}", verb="serve_mode", params={"mode": mode})
+        st = StatusUpdate(
+            "", sub.id, TaskStatus.SUCCESS, progress=1.0, message=f"served by {mode}"
         )
         self._trace.log_attempt(sub, st, session_id=session)
 
@@ -559,8 +601,8 @@ class Brain:
             if decision.gives_up:
                 return st, decision.speak  # escalate: stop + speak
             # Safety still applies to a corrective plan (P3): re-vet before acting.
-            if self._policy is not None:
-                viol = self._policy.check(Plan(subtasks=decision.subtasks), safety_context)
+            if self._gate is not None:
+                viol = self._gate.check(Plan(subtasks=decision.subtasks), safety_context)
                 if viol:
                     return st, refusal_speak(viol)
             for cs in decision.subtasks:
