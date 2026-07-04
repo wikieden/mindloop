@@ -258,11 +258,11 @@ reasoner + eval).
 
 | Item | State | Note |
 |---|---|---|
-| **D2: L4 trace → tempomem core merge** | deferred (2026-06-28) | built in mindloop; core merge is a future coordinated cross-repo change. Don't lose this. |
+| **D2: L4 trace → tempomem core merge** | ✅ done (2026-07-04, T5-9) | `tempomem.trace.TraceLog` (+ `TempoMem.trace_log()`, shared `.smem`); `mindloop.TraceStore` is now a thin adapter |
 | **Module naming** (Episteme/Phylax/Hexis) | adopted | shipped as module names without a separate owner sign-off; revisit if undesired |
-| **Phylax FMEA** | open (inherited) | policy enumerated from B2R hard-constraints, not from a failure-mode analysis |
+| **Phylax FMEA** | ✅ done (2026-07-04, T5-10) | docs/en/phylax-fmea.md: 15 modes × guards; produced `conservative_policy()` + `replace_policy` |
 | **P6 eval thresholds** | proposed | `EvalThresholds` defaults: planning ≥0.9, policy =1.0, replan ≥0.8, intent ≥0.95 — owner to ratify |
-| **negation_constraints SubTask field** | not added | P4 didn't need it; add if full B2R replan parity is wanted |
+| **negation_constraints SubTask field** | ✅ done (2026-07-04, T5-10) | Replanner retries stamp `not:<verb>:<failed id>` (accumulating, cites the trace row) |
 | **bodylink → own repo/submodule** | ✅ done (2026-06-29) | wikieden/bodylink (private) + root submodule, like mindloop/tempomem/worldsense |
 | **voicelink speech member** | ✅ done (2026-06-29) | 6th member: ASR/TTS engine fills for the `Listener`/`Speaker` seams (P7); own repo wikieden/voicelink + submodule |
 | **all members → own repos** | ✅ done (2026-06-29) | skillforge + voicelink also graduated; **all 6 members are now private repos + root submodules** — root holds only wiring + docs |

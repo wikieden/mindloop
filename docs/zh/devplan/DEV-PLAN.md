@@ -223,11 +223,11 @@ P5 给它包上**多轮对话**（`dialogue.py` —— `Conversation` 把近期�
 
 | 项 | 状态 | 备注 |
 |---|---|---|
-| **D2：L4 痕迹 → tempomem 核心合并** | 推迟（2026-06-28） | 建在 mindloop；核心合并是未来跨仓协调改动。别丢。 |
+| **D2：L4 痕迹 → tempomem 核心合并** | ✅ 完成（2026-07-04，T5-9） | `tempomem.trace.TraceLog`（+ `TempoMem.trace_log()` 共享 `.smem`）；`mindloop.TraceStore` 变薄适配层 |
 | **模块命名**（Episteme/Phylax/Hexis） | 已采用 | 未单独 owner 签字就作模块名发了；不合意可重议 |
-| **Phylax FMEA** | open（继承） | 策略从 B2R 硬约束枚举，非失效模式分析所得 |
+| **Phylax FMEA** | ✅ 完成（2026-07-04，T5-10） | docs/zh/phylax-fmea.md：15 模式 × 防线；产出 `conservative_policy()` + `replace_policy` |
 | **P6 评测阈值** | 已提议 | `EvalThresholds` 默认：规划 ≥0.9、策略 =1.0、重规划 ≥0.8、意图 ≥0.95 —— 待 owner 批准 |
-| **negation_constraints SubTask 字段** | 未加 | P4 不需要；要 B2R 重规划完全对等再加 |
+| **negation_constraints SubTask 字段** | ✅ 完成（2026-07-04，T5-10） | Replanner 重试盖 `not:<动词>:<失败 id>`（累积、引用痕迹行） |
 | **bodylink → 独立仓/子模块** | ✅ 完成（2026-06-29） | wikieden/bodylink（私有）+ root 子模块，同 mindloop/tempomem/worldsense |
 | **voicelink 语音成员** | ✅ 完成（2026-06-29） | 第 6 成员：ASR/TTS 引擎填 `Listener`/`Speaker` seam（P7）；独立仓 wikieden/voicelink + 子模块 |
 | **全成员 → 独立仓** | ✅ 完成（2026-06-29） | skillforge + voicelink 也毕业；**6 成员全为私有仓 + root 子模块** —— root 只剩 wiring + docs |
