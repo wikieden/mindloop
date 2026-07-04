@@ -58,6 +58,7 @@ from .phylax import (
     SafetyContext,
     Severity,
     Violation,
+    conservative_policy,
     refusal_speak,
 )
 from .plan import (
@@ -173,6 +174,7 @@ __all__ = [
     "WorldState",
     "citation_compliance",
     "compile_commands",
+    "conservative_policy",
     "effective_verbs",
     "extract_slots",
     "instantiate",

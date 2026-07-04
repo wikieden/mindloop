@@ -60,6 +60,16 @@ class ReplanDecision:
         return self.action == ReplanAction.ESCALATE
 
 
+
+def _negated(failed: SubTask) -> tuple[str, ...]:
+    """The retry's negation set: everything already carried + this failure.
+
+    ``not:<verb>:<failed id>`` is machine-splittable and the id cites the trace
+    row holding the full failure detail (B2R negation-learning parity).
+    """
+    return (*failed.negation_constraints, f"not:{failed.verb}:{failed.id}")
+
+
 class Replanner:
     """Maps a typed failure to a bounded corrective subtask sequence (B3 → repair).
 
@@ -118,13 +128,20 @@ class Replanner:
 
     # -- corrective subtask builders (reuse node ids, B9) ------------------- #
     def _fresh(self, failed: SubTask) -> SubTask:
-        return replace(failed, id=self._new_id(failed))
+        return replace(
+            failed, id=self._new_id(failed), negation_constraints=_negated(failed)
+        )
 
     def _adjusted(self, failed: SubTask, kind: RecoveryKind, value: float | None) -> SubTask:
         params = {**failed.params, "recovery": kind.value}
         if value is not None:
             params["recovery_value"] = value
-        return replace(failed, id=self._new_id(failed), params=params)
+        return replace(
+            failed,
+            id=self._new_id(failed),
+            params=params,
+            negation_constraints=_negated(failed),
+        )
 
     def _navigate(self, failed: SubTask) -> SubTask:
         return SubTask(

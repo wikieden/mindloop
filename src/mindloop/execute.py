@@ -119,6 +119,11 @@ class SubTask:
     # D-D: set on steps produced by macro expansion (compile pass 0) — the
     # planner-facing macro verb this atomic step came from, for trace nesting.
     macro_parent: str | None = None
+    # B2R replan parity (T5-10): what this step must NOT repeat — stamped by the
+    # Replanner on retries as ``not:<verb>:<failed subtask id>`` (the id cites
+    # the trace row with the full failure detail). The brain carries these; the
+    # body/BT tier enforces them, like preconditions/effects.
+    negation_constraints: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

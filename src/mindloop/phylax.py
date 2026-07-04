@@ -138,6 +138,32 @@ class Policy:
     menu: MenuKB | None = None
 
 
+def conservative_policy(
+    *,
+    known_regions: frozenset[str] = frozenset(),
+    guest_blocked_regions: frozenset[str] = frozenset(),
+    menu: MenuKB | None = None,
+) -> Policy:
+    """The FMEA-hardened preset (T5-10; docs/en/phylax-fmea.md).
+
+    The recommended fill for P7.4's ``offline_policy`` and a sane starting
+    point for a new deployment: heat sources and sharp tools are param-gated
+    to adults, and the human-proximity speed cap tightens to a shuffle. Region
+    dimensions are deployment data — pass them in; empty keeps those checks at
+    their normal defaults.
+    """
+    return Policy(
+        adult_only_verb_params={
+            "operate_appliance": {"appliance_type": frozenset({"stove", "oven"})},
+            "grasp": {"target": frozenset({"knife", "scissors", "blade"})},
+        },
+        max_speed_mps_near_human=0.2,
+        known_regions=known_regions,
+        guest_blocked_regions=guest_blocked_regions,
+        menu=menu,
+    )
+
+
 class Phylax:
     """The semantic safety gate: vet a `Plan` (and skill cards) against a `Policy`.
 
@@ -152,6 +178,21 @@ class Phylax:
     @property
     def policy(self) -> Policy:
         return self._policy
+
+    def replace_policy(self, new_policy: Policy, *, actor_role: str) -> None:
+        """The ONLY runtime policy override — owner-class (role=adult) only.
+
+        T5-10 access-control spec (docs/en/access-control.md): a runtime region/
+        permission change is a privileged act. Any non-adult actor is refused
+        loudly (`PermissionError`) and the standing policy stays untouched. No
+        code path reaches this from a barge-in or a Clarifier answer, so a
+        guest can never talk the gate open (D-O no-self-escalation).
+        """
+        if actor_role != "adult":
+            _log.warning("policy override refused for role=%r", actor_role)
+            raise PermissionError(f"policy override requires role=adult, got {actor_role!r}")
+        _log.info("policy replaced at runtime by an adult actor")
+        self._policy = new_policy
 
     def check(self, plan: Plan, context: SafetyContext | None = None) -> tuple[Violation, ...]:
         """Vet a compiled plan; return all violations (empty ⇒ cleared)."""
